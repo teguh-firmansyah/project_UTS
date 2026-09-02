@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('identity_number', 30)->nullable()->after('email');
+            $table->string('class_name', 50)->nullable()->after('identity_number');
+            $table->string('phone', 20)->nullable()->after('class_name');
+            $table->string('avatar')->nullable()->after('phone');
+            $table->boolean('is_active')->default(true)->after('avatar');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn(['identity_number', 'class_name', 'phone', 'avatar', 'is_active']);
+        });
+    }
+};
