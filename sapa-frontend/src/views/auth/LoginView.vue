@@ -41,36 +41,51 @@ const onSubmit = handleSubmit(async (values) => {
     <div class="animate-fade-up w-full max-w-4xl bg-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-700/80 transition-all duration-500">
       
       <!-- Panel Kiri (Visual Banner) -->
-      <div class="relative md:w-1/2 bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 p-8 flex flex-col justify-between overflow-hidden min-h-[300px] md:min-h-[500px]">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent"></div>
-        
-        <!-- Header Panel Kiri -->
-        <div class="relative z-10 flex justify-between items-center animate-pulse-slow">
-          <div class="flex items-center space-x-2">
-            <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-slate-950 font-bold text-lg shadow-lg shadow-emerald-500/20">
-              S
-            </div>
-            <span class="text-white font-bold text-xl tracking-wide">SAPA</span>
-          </div>
-        </div>
+      <!-- Panel Kiri (Visual Banner) -->
+<div class="relative md:w-1/2 p-8 flex flex-col justify-between overflow-hidden min-h-[300px] md:min-h-[500px]">
+  
+  <!-- Gambar Latar Belakang -->
+  <img 
+    src="../../assets/login.jpeg" 
+    alt="Background Sekolah" 
+    class="absolute inset-0 w-full h-full object-cover"
+  />
 
-        <!-- Hero Text -->
-        <div class="relative z-10 my-auto py-8">
-          <h2 class="text-2xl md:text-3xl font-bold text-white leading-tight mb-2">
-            Suara Anda,<br />Membangun Sekolah.
-          </h2>
-          <p class="text-slate-400 text-sm">
-            Sistem Layanan Aspirasi dan Pengaduan Online Sekolah.
-          </p>
-        </div>
-
-        <!-- Indicator Carousel -->
-        <div class="relative z-10 flex space-x-2">
-          <div class="h-1.5 w-4 rounded-full bg-slate-700"></div>
-          <div class="h-1.5 w-8 rounded-full bg-emerald-400"></div>
-        </div>
+  <!-- Overlay Gelap / Gradient agar Teks Tetap Jelas Terbaca -->
+  <div class="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900/80 to-emerald-950/70"></div>
+  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-emerald-500/20 via-transparent to-transparent"></div>
+  
+  <!-- Header Panel Kiri -->
+  <div class="relative z-10 flex justify-between items-center animate-pulse-slow">
+    <div class="flex items-center space-x-2">
+      <!-- Container Foto Logo -->
+      <div class="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-slate-800 border border-slate-700/80 shadow-lg shadow-emerald-500/20">
+        <img 
+          src="../../assets/logo sapa.jpeg" 
+          alt="Logo SAPA" 
+          class="w-full h-full object-cover"
+        />
       </div>
+      <span class="text-white font-bold text-xl tracking-wide">SAPA</span>
+    </div>
+  </div>
 
+  <!-- Hero Text -->
+  <div class="relative z-10 my-auto py-8">
+    <h2 class="text-2xl md:text-3xl font-bold text-white leading-tight mb-2 drop-shadow-md">
+      Suara Anda,<br />Membangun Sekolah.
+    </h2>
+    <p class="text-slate-300 text-sm drop-shadow">
+      Sistem Layanan Aspirasi dan Pengaduan Online Sekolah.
+    </p>
+  </div>
+
+  <!-- Indicator Carousel -->
+  <div class="relative z-10 flex space-x-2">
+    <div class="h-1.5 w-4 rounded-full bg-slate-700/80"></div>
+    <div class="h-1.5 w-8 rounded-full bg-emerald-400"></div>
+  </div>
+</div>
       <!-- Panel Kanan (Form Login) -->
       <div class="md:w-1/2 p-8 lg:p-10 flex flex-col justify-between bg-slate-800">
         <div>
