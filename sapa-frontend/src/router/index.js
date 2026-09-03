@@ -24,6 +24,12 @@ const routes = [
     meta: { requiresAuth: true, roles: ['student'] },
   },
   {
+    path: '/reports',
+    name: 'reports-list',
+    component: () => import('@/views/student/ReportListView.vue'),
+    meta: { requiresAuth: true, roles: ['student'] },
+  },
+  {
     path: '/reports/new',
     name: 'report-create',
     component: () => import('@/views/student/CreateReportView.vue'),
