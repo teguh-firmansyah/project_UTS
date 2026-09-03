@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -7,7 +7,6 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// State Data Dummy/Simulasi (Ganti dengan panggil API backend Anda)
 const reports = ref([
   {
     id: 1,
@@ -38,7 +37,6 @@ const reports = ref([
   }
 ])
 
-// Statistik berdasarkan data laporan
 const stats = computed(() => {
   return {
     total: reports.value.length,
@@ -48,7 +46,6 @@ const stats = computed(() => {
   }
 })
 
-// Helper format status, tipe, & badge warna
 const getStatusBadge = (status) => {
   const map = {
     pending: { label: 'Menunggu', class: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
@@ -77,6 +74,10 @@ const formatDate = (dateString) => {
   })
 }
 
+const navigateToCreateWithType = (type) => {
+  router.push({ path: '/reports/new', query: { type } })
+}
+
 async function handleLogout() {
   await authStore.logout()
   toast.success('Berhasil keluar dari sistem.')
@@ -87,27 +88,25 @@ async function handleLogout() {
 <template>
   <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
     
-    <!-- Top Navigation Bar -->
+    <!-- Navbar Header -->
     <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700/80 sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           
-          <!-- Logo & Brand -->
           <div class="flex items-center space-x-3">
             <div class="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700/80 shadow-lg shadow-emerald-500/10">
-                <img 
+              <img 
                 src="../../assets/logo sapa.jpeg" 
                 alt="Logo SAPA" 
                 class="w-full h-full object-cover" 
-                />
+              />
             </div>
             <span class="text-white font-bold text-xl tracking-wide hidden sm:inline">SAPA</span>
-            </div>
+          </div>
 
-          <!-- Quick Action & User Profile Dropdown / Logout -->
-          <div class="flex items-center space-x-4">
+          <div class="flex items-center space-x-3">
             <router-link
-              to="/reports/create"
+              to="/reports/new"
               class="bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition-all duration-200 shadow-md shadow-emerald-500/10 flex items-center space-x-1.5"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +115,6 @@ async function handleLogout() {
               <span>Buat Laporan</span>
             </router-link>
 
-            <!-- Logout Button -->
             <button
               @click="handleLogout"
               title="Keluar"
@@ -132,12 +130,12 @@ async function handleLogout() {
       </div>
     </header>
 
-    <!-- Main Content Area -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-up">
       
-      <!-- Welcome Hero Banner -->
-      <section class="relative overflow-hidden bg-gradient-to-br from-emerald-900/60 via-slate-800 to-slate-800 border border-slate-700/80 rounded-2xl p-6 md:p-8 shadow-xl">
+      <!-- Welcome Banner & Quick Action Buttons -->
+      <section class="relative overflow-hidden bg-gradient-to-br from-emerald-900/60 via-slate-800 to-slate-800 border border-slate-700/80 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none"></div>
+        
         <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">
@@ -147,6 +145,7 @@ async function handleLogout() {
               Pantau status laporan, sampaikan aspirasi, atau laporkan kendala fasilitas dan keamanan di lingkungan sekolahmu.
             </p>
           </div>
+
           <div class="flex items-center space-x-3 bg-slate-900/40 backdrop-blur border border-slate-700/50 rounded-xl p-3 self-start md:self-auto">
             <div class="w-10 h-10 rounded-full bg-slate-700/80 flex items-center justify-center text-emerald-400 font-bold text-base border border-slate-600">
               {{ authStore.user?.class_name ? authStore.user.class_name.substring(0, 2) : 'ST' }}
@@ -157,11 +156,63 @@ async function handleLogout() {
             </div>
           </div>
         </div>
+
+        <!-- Tombol Aksi Cepat / Tombol Tambahan -->
+        <div class="relative z-10 pt-4 border-t border-slate-700/60">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Aksi Cepat Laporan</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            
+            <button
+              @click="navigateToCreateWithType('aspirasi')"
+              class="flex items-center space-x-3 p-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-xl transition-all duration-200 text-left group"
+            >
+              <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20 group-hover:scale-105 transition-transform">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-white group-hover:text-purple-400 transition-colors">Kirim Aspirasi</p>
+                <p class="text-[10px] text-slate-400">Ide & usulan ide sekolah</p>
+              </div>
+            </button>
+
+            <button
+              @click="navigateToCreateWithType('fasilitas')"
+              class="flex items-center space-x-3 p-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-xl transition-all duration-200 text-left group"
+            >
+              <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20 group-hover:scale-105 transition-transform">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-white group-hover:text-cyan-400 transition-colors">Lapor Fasilitas</p>
+                <p class="text-[10px] text-slate-400">Kerusakan sarana sekolah</p>
+              </div>
+            </button>
+
+            <button
+              @click="navigateToCreateWithType('bullying')"
+              class="flex items-center space-x-3 p-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-xl transition-all duration-200 text-left group"
+            >
+              <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20 group-hover:scale-105 transition-transform">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-white group-hover:text-rose-400 transition-colors">Pengaduan Bullying</p>
+                <p class="text-[10px] text-slate-400">Laporan perundungan aman</p>
+              </div>
+            </button>
+
+          </div>
+        </div>
       </section>
 
-      <!-- Stats Cards Row -->
+      <!-- Grid Statistik -->
       <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Total Laporan -->
         <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-5 shadow-lg flex items-center justify-between">
           <div>
             <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Laporan</p>
@@ -174,7 +225,6 @@ async function handleLogout() {
           </div>
         </div>
 
-        <!-- Menunggu Process -->
         <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-5 shadow-lg flex items-center justify-between">
           <div>
             <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Menunggu</p>
@@ -187,7 +237,6 @@ async function handleLogout() {
           </div>
         </div>
 
-        <!-- Dalam Proses -->
         <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-5 shadow-lg flex items-center justify-between">
           <div>
             <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Diproses</p>
@@ -195,16 +244,15 @@ async function handleLogout() {
           </div>
           <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
         </div>
 
-        <!-- Selesai -->
         <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-5 shadow-lg flex items-center justify-between">
           <div>
             <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Selesai</p>
-            <h3 class="text-2xl font-bold text-slate-200 mt-1">{{ stats.resolved }}</h3>
+            <h3 class="text-2xl font-bold text-slate-300 mt-1">{{ stats.resolved }}</h3>
           </div>
           <div class="w-10 h-10 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-300">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,127 +262,64 @@ async function handleLogout() {
         </div>
       </section>
 
-      <!-- Quick Actions Grid -->
-      <section>
-        <h2 class="text-base font-semibold text-white mb-4">Aksi Cepat</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          
-          <router-link 
-            to="/reports/create?type=aspiration"
-            class="group bg-slate-800 hover:bg-slate-800/90 border border-slate-700/80 hover:border-purple-500/50 rounded-xl p-5 transition-all duration-300 flex items-start space-x-4 shadow-lg hover:shadow-purple-500/5"
-          >
-            <div class="p-3 rounded-lg bg-purple-500/10 text-purple-400 group-hover:bg-purple-500 group-hover:text-slate-950 transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-sm font-semibold text-white group-hover:text-purple-300 transition-colors">Sampaikan Aspirasi</h3>
-              <p class="text-xs text-slate-400 mt-1">Beri usulan atau ide perbaikan akademik dan kebijakan sekolah.</p>
-            </div>
-          </router-link>
-
-          <router-link 
-            to="/reports/create?type=facility"
-            class="group bg-slate-800 hover:bg-slate-800/90 border border-slate-700/80 hover:border-cyan-500/50 rounded-xl p-5 transition-all duration-300 flex items-start space-x-4 shadow-lg hover:shadow-cyan-500/5"
-          >
-            <div class="p-3 rounded-lg bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500 group-hover:text-slate-950 transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-sm font-semibold text-white group-hover:text-cyan-300 transition-colors">Laporkan Fasilitas</h3>
-              <p class="text-xs text-slate-400 mt-1">Sampaikan kerusakan barang, meja, kursi, atau fasilitas sekolah.</p>
-            </div>
-          </router-link>
-
-          <router-link 
-            to="/reports/create?type=bullying"
-            class="group bg-slate-800 hover:bg-slate-800/90 border border-slate-700/80 hover:border-rose-500/50 rounded-xl p-5 transition-all duration-300 flex items-start space-x-4 shadow-lg hover:shadow-rose-500/5"
-          >
-            <div class="p-3 rounded-lg bg-rose-500/10 text-rose-400 group-hover:bg-rose-500 group-hover:text-slate-950 transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-sm font-semibold text-white group-hover:text-rose-300 transition-colors">Aduan Perundungan</h3>
-              <p class="text-xs text-slate-400 mt-1">Laporan aman & rahasia langsung ke Guru BK/Kanselor.</p>
-            </div>
-          </router-link>
-
-        </div>
-      </section>
-
-      <!-- Recent Reports Table -->
-      <section class="bg-slate-800 border border-slate-700/80 rounded-2xl shadow-xl overflow-hidden">
-        <div class="p-6 border-b border-slate-700/80 flex items-center justify-between">
+      <!-- Daftar Laporan dengan Tombol Lihat Semua Detail & Tombol Detail Per Laporan -->
+      <section class="bg-slate-800 rounded-2xl border border-slate-700/80 shadow-xl overflow-hidden">
+        <div class="p-6 border-b border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-lg font-bold text-white">Laporan Terbaru Anda</h2>
-            <p class="text-xs text-slate-400 mt-0.5">Daftar riwayat laporan dan status penanganannya.</p>
+            <h2 class="text-base font-bold text-white">Riwayat Laporan Saya</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Daftar seluruh laporan dan masukan yang pernah Anda kirimkan.</p>
           </div>
-          <router-link to="/reports" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
-            Lihat Semua →
-          </router-link>
+
+          <!-- Tombol "Lihat Semua Detail" -->
+          <button
+            @click="router.push('/reports')"
+            class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-500 rounded-lg border border-emerald-500/30 transition-all duration-200"
+          >
+            <span>Lihat Semua Detail</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-900/50 border-b border-slate-700/80 text-xs text-slate-400 uppercase tracking-wider">
-                <th class="py-3.5 px-6 font-semibold">Kode & Judul</th>
-                <th class="py-3.5 px-6 font-semibold">Tipe</th>
-                <th class="py-3.5 px-6 font-semibold">Status</th>
-                <th class="py-3.5 px-6 font-semibold">Tanggal</th>
-                <th class="py-3.5 px-6 font-semibold text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-700/50 text-sm">
-              <tr v-if="reports.length === 0">
-                <td colspan="5" class="py-8 text-center text-slate-500">
-                  Belum ada laporan yang dibuat.
-                </td>
-              </tr>
-              <tr 
-                v-for="item in reports" 
-                :key="item.id" 
-                class="hover:bg-slate-700/30 transition-colors duration-150"
+        <div class="divide-y divide-slate-700/60">
+          <div 
+            v-for="item in reports" 
+            :key="item.id" 
+            class="p-5 hover:bg-slate-700/30 transition-colors duration-150 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          >
+            <div class="space-y-1.5">
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  {{ item.report_code }}
+                </span>
+                <span class="text-xs font-medium px-2.5 py-0.5 rounded-full border" :class="getTypeBadge(item.type).class">
+                  {{ getTypeBadge(item.type).label }}
+                </span>
+                <span class="text-xs font-medium px-2.5 py-0.5 rounded-full border" :class="getStatusBadge(item.status).class">
+                  {{ getStatusBadge(item.status).label }}
+                </span>
+              </div>
+              <h3 class="text-sm font-semibold text-white">
+                {{ item.title }}
+              </h3>
+              <p class="text-xs text-slate-400">Dikirim pada: {{ formatDate(item.created_at) }}</p>
+            </div>
+
+            <!-- Tombol Detail di Setiap Laporan -->
+            <div class="flex items-center space-x-3 self-end sm:self-center">
+              <button
+                @click="router.push(`/reports/${item.id}`)"
+                class="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium transition-all duration-150 border border-slate-600"
               >
-                <td class="py-4 px-6">
-                  <span class="text-xs font-mono text-emerald-400 block mb-0.5">{{ item.report_code }}</span>
-                  <span class="font-medium text-white line-clamp-1">{{ item.title }}</span>
-                </td>
-                <td class="py-4 px-6 whitespace-nowrap">
-                  <span 
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                    :class="getTypeBadge(item.type).class"
-                  >
-                    {{ getTypeBadge(item.type).label }}
-                  </span>
-                </td>
-                <td class="py-4 px-6 whitespace-nowrap">
-                  <span 
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                    :class="getStatusBadge(item.status).class"
-                  >
-                    {{ getStatusBadge(item.status).label }}
-                  </span>
-                </td>
-                <td class="py-4 px-6 text-slate-400 text-xs whitespace-nowrap">
-                  {{ formatDate(item.created_at) }}
-                </td>
-                <td class="py-4 px-6 text-right whitespace-nowrap">
-                  <router-link 
-                    :to="`/reports/${item.id}`" 
-                    class="text-xs font-medium text-slate-300 hover:text-emerald-400 bg-slate-700/50 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-600/50 transition-colors"
-                  >
-                    Detail
-                  </router-link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                <span>Detail</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -346,7 +331,7 @@ async function handleLogout() {
 @keyframes fadeUp {
   0% {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(12px);
   }
   100% {
     opacity: 1;
@@ -355,6 +340,6 @@ async function handleLogout() {
 }
 
 .animate-fade-up {
-  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 </style>
