@@ -105,6 +105,11 @@ router.beforeEach(async (to) => {
     await authStore.fetchCurrentUser()
   }
 
+  // langsung arahkan ke dashboard sesuai role-nya, sebelum cek meta.roles
+  if (to.path === '/' && authStore.isAuthenticated && !authStore.isStudent) {
+    return authStore.defaultRoute
+  }
+
   // Halaman yang butuh login, tapi user belum login
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }

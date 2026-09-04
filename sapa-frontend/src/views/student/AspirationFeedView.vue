@@ -4,7 +4,9 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-// Data dummy khusus aspirasi (4 data, semua Selesai)
+/* ---------------------------------- */
+/* Data dummy aspirasi (existing)     */
+/* ---------------------------------- */
 const aspirations = ref([
   {
     id: 1,
@@ -60,14 +62,48 @@ const aspirations = ref([
   }
 ])
 
+/* ---------------------------------- */
+/* State filter (existing) + urutan   */
+/* ---------------------------------- */
 const searchKeyword = ref('')
-const activeTab = ref('all') // State untuk filter tab: 'all' atau 'liked'
+const activeTab = ref('all') // 'all' | 'liked'
+const sortMode = ref('latest') // 'latest' | 'top' — tambahan
 
-// Hitung Statistik Otomatis
+/* ---------------------------------- */
+/* Statistik (computed existing,      */
+/* kini ditampilkan di hero)          */
+/* ---------------------------------- */
 const totalAspirations = computed(() => aspirations.value.length)
 const totalVotes = computed(() => aspirations.value.reduce((acc, curr) => acc + curr.likesCount, 0))
+const likedCount = computed(() => aspirations.value.filter(a => a.isLiked).length)
 
-// Toggle fungsi Like
+const statItems = computed(() => [
+  {
+    label: 'Total Aspirasi',
+    value: totalAspirations.value,
+    icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
+    tile: 'border-purple-500/25 bg-purple-500/10 text-purple-400',
+    num: 'text-white',
+  },
+  {
+    label: 'Total Dukungan',
+    value: totalVotes.value,
+    icon: 'M12 19V5M5 12l7-7 7 7',
+    tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
+    num: 'text-emerald-400',
+  },
+  {
+    label: 'Anda Dukung',
+    value: likedCount.value,
+    icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+    tile: 'border-purple-500/25 bg-purple-500/10 text-purple-400',
+    num: 'text-purple-400',
+  },
+])
+
+/* ---------------------------------- */
+/* Toggle like (behavior existing)    */
+/* ---------------------------------- */
 const toggleLike = (item) => {
   if (item.isLiked) {
     item.likesCount--
@@ -78,39 +114,77 @@ const toggleLike = (item) => {
   }
 }
 
-// Filter berdasarkan Pencarian Kata Kunci & Tab Status Like
+/* ---------------------------------- */
+/* Filter (logika existing)           */
+/* ---------------------------------- */
 const filteredAspirations = computed(() => {
   return aspirations.value.filter(item => {
-    // Match berdasarkan keyword
-    const matchesSearch = item.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) || 
+    const matchesSearch = item.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
                           item.content.toLowerCase().includes(searchKeyword.value.toLowerCase())
-    
-    // Match berdasarkan tab filter
     const matchesTab = activeTab.value === 'all' || (activeTab.value === 'liked' && item.isLiked)
-
     return matchesSearch && matchesTab
   })
 })
 
-// Badges Style berdasarkan Status
+/* Urutan tampilan: terbaru (urutan data) / paling didukung */
+const visibleAspirations = computed(() => {
+  if (sortMode.value === 'top') {
+    return [...filteredAspirations.value].sort((a, b) => b.likesCount - a.likesCount)
+  }
+  return filteredAspirations.value
+})
+
+const hasActiveFilters = computed(() => searchKeyword.value.trim() !== '' || activeTab.value !== 'all')
+const clearFilters = () => {
+  searchKeyword.value = ''
+  activeTab.value = 'all'
+}
+
+/* ---------------------------------- */
+/* Badge status — warna diselaraskan  */
+/* dengan sistem (Diproses=emerald,   */
+/* Selesai=slate) + Menunggu/Ditolak  */
+/* ---------------------------------- */
 const getStatusBadge = (status) => {
   switch (status) {
-    case 'Diproses': return 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-    case 'Ditinjau': return 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-    case 'Selesai': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-    default: return 'bg-slate-500/10 text-slate-400 border-slate-500/30'
+    case 'Menunggu': return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+    case 'Ditinjau': return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+    case 'Diproses': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    case 'Selesai': return 'bg-slate-500/10 text-slate-300 border-slate-500/20'
+    case 'Ditolak': return 'bg-red-500/10 text-red-400 border-red-500/20'
+    default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20'
   }
 }
+
+/* ---------------------------------- */
+/* Turunan tampilan                   */
+/* ---------------------------------- */
+const initialsOf = (name) => {
+  const n = (name || '').trim()
+  if (!n) return '?'
+  const parts = n.split(/\s+/)
+  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : n.slice(0, 2)).toUpperCase()
+}
+
+/* CTA langsung membuka kanal aspirasi pada form buat laporan */
+const goToCreateAspiration = () => {
+  router.push({ path: '/reports/new', query: { type: 'aspirasi' } })
+}
+
+/* Placeholder foto — ganti dengan aset sekolah bila tersedia */
+const heroPhoto = 'https://picsum.photos/seed/sapaaspirasi/1600/900.jpg'
+const logoFailed = ref(false)
+const currentYear = new Date().getFullYear()
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 font-sans text-slate-100 antialiased selection:bg-emerald-500/25">
-    
-    <!-- Top Bar Navigation -->
+  <div class="sapa-root flex min-h-screen flex-col bg-slate-950 font-sans text-slate-100 antialiased selection:bg-emerald-500/25">
+
+    <!-- ============ Bar atas ============ -->
     <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
-      <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center gap-4">
-          <!-- Tombol Kembali -->
+      <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
+
+        <div class="flex min-w-0 items-center gap-3 sm:gap-4">
           <button
             type="button"
             @click="router.back()"
@@ -121,153 +195,337 @@ const getStatusBadge = (status) => {
             </svg>
             <span>Kembali</span>
           </button>
+
+          <span class="hidden h-6 w-px bg-slate-800 sm:block" aria-hidden="true"></span>
+
+          <router-link to="/" class="flex min-w-0 items-center gap-2.5 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60">
+            <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800 ring-1 ring-emerald-500/20">
+            <img v-if="!logoFailed" src="../../assets/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
+            <span v-else class="text-sm font-extrabold text-emerald-400">S</span>
+          </div>
+          <div class="hidden min-w-0 sm:block">
+            <p class="text-[15px] font-extrabold leading-none tracking-tight text-white">SAPA</p>
+            <p class="mt-1 hidden truncate text-[9px] font-medium uppercase leading-none tracking-[0.16em] text-slate-500 lg:block">Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
+          </div>
+        </div>
+          </router-link>
         </div>
       </div>
     </header>
 
-    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      
-      <!-- Headline & Subtitle -->
-      <section class="mb-8">
-        <div class="flex items-center gap-3 mb-2">
-          <span class="h-6 w-[4px] rounded-full bg-emerald-500"></span>
-          <h1 class="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Umpan Aspirasi</h1>
-        </div>
-        <p class="text-sm text-slate-400 max-w-2xl">
-          Wadah terbuka bagi seluruh siswa untuk menyampaikan gagasan dan inovasi. Berikan dukungan pada usulan yang menurut Anda penting agar dapat diprioritaskan oleh pihak sekolah.
-        </p>
-      </section>
+    <!-- ============ Konten ============ -->
+    <main class="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
 
-      <!-- Control Bar: Search Input & Tab Filter Disukai -->
-      <section class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        
-        <!-- Search Input -->
-        <div class="relative w-full sm:w-80">
-          <svg class="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input 
-            v-model="searchKeyword"
-            type="text" 
-            placeholder="Cari kata kunci aspirasi..." 
-            class="w-full rounded-xl border border-slate-800 bg-slate-900/80 pl-10 pr-4 py-2 text-xs text-slate-100 placeholder-slate-500 transition focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
-          />
-        </div>
+      <!-- ===== Hero kanal aspirasi ===== -->
+      <section class="fade-up relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+        <!-- Foto latar: lingkungan belajar, digelapkan & desaturasi -->
+        <img :src="heroPhoto" alt="" aria-hidden="true" draggable="false"
+             class="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-20 grayscale contrast-125 brightness-[.65]" />
+        <div class="pointer-events-none absolute inset-0 bg-slate-950/60" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/30 to-transparent" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute inset-0" aria-hidden="true"
+             style="background: radial-gradient(900px 400px at 12% 0%, rgba(168, 85, 247, 0.13), transparent 65%)"></div>
+        <span class="absolute inset-x-0 top-0 z-10 h-[2px] bg-gradient-to-r from-purple-500/70 via-purple-500/20 to-transparent" aria-hidden="true"></span>
 
-        <!-- Filter Tab Buttons -->
-        <div class="flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1 self-start sm:self-auto">
-          <button
-            type="button"
-            @click="activeTab = 'all'"
-            class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
-            :class="activeTab === 'all' 
-              ? 'bg-slate-800 text-white shadow-sm' 
-              : 'text-slate-400 hover:text-slate-200'"
-          >
-            Semua
-          </button>
-          
-          <button
-            type="button"
-            @click="activeTab = 'liked'"
-            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
-            :class="activeTab === 'liked' 
-              ? 'bg-red-500/10 text-red-400 border border-red-500/30 shadow-sm' 
-              : 'text-slate-400 hover:text-slate-200'"
-          >
-            <svg 
-              class="h-3.5 w-3.5" 
-              :class="activeTab === 'liked' ? 'fill-red-400 stroke-red-400' : 'fill-none stroke-current'" 
-              stroke-width="2" 
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-            <span>Disukai</span>
-          </button>
-        </div>
-
-      </section>
-
-      <!-- Feed Grid -->
-      <div v-if="filteredAspirations.length > 0" class="grid grid-cols-1 gap-5 md:grid-cols-2">
-        
-        <article 
-          v-for="item in filteredAspirations" 
-          :key="item.id"
-          class="relative flex flex-col justify-between rounded-xl border border-slate-800 bg-slate-900 p-5 transition-all hover:border-slate-700/80"
-        >
-          <!-- Card Header -->
-          <div>
-            <div class="flex items-start justify-between gap-3">
-              <span class="inline-flex items-center rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase text-emerald-400">
-                Aspirasi
-              </span>
-
-              <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium" :class="getStatusBadge(item.status)">
-                {{ item.status }}
-              </span>
-            </div>
-
-            <!-- Title & Content -->
-            <h3 class="mt-3 text-base font-bold text-white tracking-tight leading-snug">{{ item.title }}</h3>
-            <p class="mt-2 text-xs leading-relaxed text-slate-400">{{ item.content }}</p>
+        <div class="relative z-10 p-6 sm:p-8 lg:p-9">
+          <div class="flex items-center gap-2.5">
+            <span class="relative flex h-2 w-2">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-60"></span>
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-purple-500"></span>
+            </span>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-purple-300/90">Kanal Aspirasi · Terbuka untuk Semua Siswa</p>
           </div>
 
-          <!-- Card Footer & Actions -->
-          <div class="mt-6 border-t border-slate-800/80 pt-4 flex items-center justify-between">
-            
-            <!-- Author Info -->
-            <div class="flex items-center gap-2.5">
-              <div class="flex h-7 w-7 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-300 font-semibold text-[10px]">
-                {{ item.isAnonymous ? '?' : item.author.charAt(0) }}
+          <h1 class="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl">
+            Umpan <span class="text-purple-400">Aspirasi</span>
+          </h1>
+          <p class="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
+            Wadah terbuka bagi seluruh siswa untuk menyampaikan gagasan dan inovasi.
+            Berikan dukungan pada usulan yang menurut Anda penting agar dapat diprioritaskan oleh pihak sekolah.
+          </p>
+
+          <!-- Strip statistik -->
+          <div class="mt-7 grid grid-cols-3 gap-3 border-t border-slate-800/70 pt-5 sm:gap-4">
+            <div v-for="s in statItems" :key="s.label" class="flex items-center gap-2.5 sm:gap-3">
+              <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border sm:h-9 sm:w-9" :class="s.tile">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" :d="s.icon" />
+                </svg>
               </div>
-              <div class="flex flex-col">
-                <span class="text-xs font-medium text-slate-200 leading-none">
-                  {{ item.isAnonymous ? 'Anonim' : item.author }}
-                </span>
-                <span class="text-[10px] text-slate-500 mt-0.5">
-                  {{ item.isAnonymous ? item.createdAt : `${item.class} • ${item.createdAt}` }}
-                </span>
+              <div class="min-w-0">
+                <p class="text-base font-extrabold leading-none tracking-tight tabular-nums sm:text-xl" :class="s.num">{{ s.value }}</p>
+                <p class="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-[10px]">{{ s.label }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Toolbar: cari, urut, filter ===== -->
+      <section class="fade-up space-y-4" style="animation-delay: 90ms">
+
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <!-- Pencarian -->
+          <div class="relative flex-1">
+            <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
+            </svg>
+            <input
+              v-model="searchKeyword"
+              type="text"
+              aria-label="Cari aspirasi"
+              placeholder="Cari kata kunci aspirasi..."
+              class="w-full rounded-lg border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-9 text-sm text-slate-100 placeholder-slate-500 transition-colors duration-200 focus:border-purple-500/60 focus:outline-none focus:ring-2 focus:ring-purple-500/15"
+            />
+            <button
+              v-if="searchKeyword"
+              type="button"
+              @click="searchKeyword = ''"
+              aria-label="Bersihkan pencarian"
+              class="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition-colors duration-150 hover:bg-slate-800 hover:text-slate-200"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Urutan -->
+          <div class="relative w-full sm:w-56">
+            <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7-7-7 7M5 15l7 7 7-7" />
+            </svg>
+            <select
+              v-model="sortMode"
+              aria-label="Urutkan aspirasi"
+              class="w-full cursor-pointer appearance-none rounded-lg border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-9 text-sm text-slate-100 transition-colors duration-200 focus:border-purple-500/60 focus:outline-none focus:ring-2 focus:ring-purple-500/15"
+            >
+              <option value="latest" class="bg-slate-900 text-slate-100">Terbaru</option>
+              <option value="top" class="bg-slate-900 text-slate-100">Paling Didukung</option>
+            </select>
+            <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Pil filter + ringkasan -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            :aria-pressed="activeTab === 'all'"
+            @click="activeTab = 'all'"
+            class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all duration-200 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+            :class="activeTab === 'all' ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' : 'border-slate-800 bg-slate-950/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'"
+          >
+            <span class="h-1.5 w-1.5 rounded-full bg-current opacity-80" aria-hidden="true"></span>
+            Semua
+            <span class="rounded bg-slate-800/90 px-1.5 py-px text-[10px] font-semibold tabular-nums text-slate-500">{{ totalAspirations }}</span>
+          </button>
+
+          <button
+            type="button"
+            :aria-pressed="activeTab === 'liked'"
+            @click="activeTab = 'liked'"
+            class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all duration-200 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50"
+            :class="activeTab === 'liked' ? 'border-purple-500/50 bg-purple-500/15 text-purple-400' : 'border-slate-800 bg-slate-950/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'"
+          >
+            <span class="h-1.5 w-1.5 rounded-full bg-current opacity-80" aria-hidden="true"></span>
+            Didukung
+            <span class="rounded bg-slate-800/90 px-1.5 py-px text-[10px] font-semibold tabular-nums text-slate-500">{{ likedCount }}</span>
+          </button>
+
+          <div class="ml-auto flex items-center gap-3 pl-2">
+            <p class="whitespace-nowrap text-[11px] text-slate-500">
+              Menampilkan <span class="font-semibold tabular-nums text-slate-300">{{ visibleAspirations.length }}</span> dari {{ totalAspirations }} aspirasi
+            </p>
+            <button
+              v-if="hasActiveFilters"
+              type="button"
+              @click="clearFilters"
+              class="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-400 transition-all duration-150 hover:border-purple-500/40 hover:text-purple-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50"
+            >
+              Atur ulang
+              <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Grid umpan ===== -->
+      <section v-if="visibleAspirations.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <article
+          v-for="(item, i) in visibleAspirations"
+          :key="item.id"
+          class="card-enter group relative flex flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-500/30 hover:shadow-lg hover:shadow-black/25"
+          :style="{ animationDelay: (i * 60) + 'ms' }"
+        >
+          <!-- Aksen kanal, muncul saat hover -->
+          <span class="absolute bottom-4 left-0 top-4 w-[3px] rounded-r-full bg-purple-500/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true"></span>
+
+          <!-- Badges -->
+          <div class="flex items-start justify-between gap-3">
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 px-2.5 py-0.5 text-[11px] font-medium text-purple-400">
+              <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+              Aspirasi
+            </span>
+            <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-medium" :class="getStatusBadge(item.status)">
+              <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+              {{ item.status }}
+            </span>
+          </div>
+
+          <!-- Judul + isi -->
+          <div class="flex-1">
+            <h3 class="mt-4 text-sm font-bold leading-snug tracking-tight text-white">{{ item.title }}</h3>
+            <p class="clamp-3 mt-2 text-xs leading-relaxed text-slate-400">{{ item.content }}</p>
+          </div>
+
+          <!-- Footer: pelapor + dukungan -->
+          <div class="mt-5 flex items-center justify-between gap-3 border-t border-slate-800/70 pt-4">
+            <div class="flex min-w-0 items-center gap-2.5">
+              <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-purple-500/30 bg-purple-500/10 text-[10px] font-bold text-purple-400">
+                <svg v-if="item.isAnonymous" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <template v-else>{{ initialsOf(item.author) }}</template>
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-xs font-semibold text-slate-200">{{ item.isAnonymous ? 'Siswa Anonim' : item.author }}</p>
+                <p class="mt-0.5 truncate text-[10px] text-slate-500">{{ item.isAnonymous ? item.createdAt : item.class + ' · ' + item.createdAt }}</p>
               </div>
             </div>
 
-            <!-- Like / Upvote Button -->
-            <button 
+            <!-- Tombol dukungan -->
+            <button
+              type="button"
               @click="toggleLike(item)"
-              class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all active:scale-[.95]"
-              :class="item.isLiked 
-                ? 'border-red-500/50 bg-red-500/10 text-red-500' 
-                : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'"
+              :aria-pressed="item.isLiked"
+              :aria-label="item.isLiked ? 'Batalkan dukungan' : 'Dukung aspirasi ini'"
+              :title="item.isLiked ? 'Batalkan dukungan' : 'Dukung aspirasi ini'"
+              class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-200 active:scale-[.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60"
+              :class="item.isLiked
+                ? 'border-purple-500/50 bg-purple-500/10 text-purple-400'
+                : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-purple-500/40 hover:text-purple-300'"
             >
-              <svg 
-                class="h-4 w-4 transition-transform active:scale-125" 
-                :class="item.isLiked ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-slate-400'"
-                stroke-width="2" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M5 12l7-7 7 7" />
               </svg>
-              <span>{{ item.likesCount }}</span>
+              <span class="tabular-nums">{{ item.likesCount }}</span>
             </button>
           </div>
         </article>
+      </section>
 
-      </div>
+      <!-- ===== Keadaan kosong ===== -->
+      <div v-else class="fade-up flex flex-col items-center rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-14 text-center" style="animation-delay: 120ms">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400">
+          <svg v-if="hasActiveFilters" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
+          </svg>
+          <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+        </div>
 
-      <!-- State Jika Data Kosong -->
-      <div v-else class="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900/40 py-12 text-center">
-        <svg class="h-10 w-10 text-slate-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <p class="mt-3 text-sm font-semibold text-slate-300">
-          {{ activeTab === 'liked' ? 'Belum ada aspirasi yang disukai' : 'Aspirasi tidak ditemukan' }}
+        <p class="mt-4 text-sm font-semibold text-slate-200">
+          {{ activeTab === 'liked'
+            ? 'Belum ada aspirasi yang Anda dukung'
+            : hasActiveFilters
+              ? 'Aspirasi tidak ditemukan'
+              : 'Belum ada aspirasi' }}
         </p>
-        <p class="mt-1 text-xs text-slate-500">
-          {{ activeTab === 'liked' ? 'Sukai beberapa aspirasi terlebih dahulu untuk melihatnya di sini.' : 'Coba ubah kata kunci pencarian Anda.' }}
+        <p class="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
+          {{ activeTab === 'liked'
+            ? 'Dukung beberapa aspirasi terlebih dahulu untuk melihatnya di sini.'
+            : hasActiveFilters
+              ? 'Coba gunakan kata kunci lain atau atur ulang filter.'
+              : 'Jadilah yang pertama menyampaikan usulan untuk kemajuan sekolah.' }}
         </p>
-      </div>
 
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          @click="clearFilters"
+          class="mt-6 inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-xs font-semibold text-purple-400 transition-all duration-200 hover:bg-purple-500 hover:text-slate-950 active:scale-[.97]"
+        >
+          Atur Ulang Filter
+        </button>
+        <button
+          v-else
+          type="button"
+          @click="goToCreateAspiration"
+          class="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97]"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Kirim Aspirasi Pertama
+        </button>
+      </div>
     </main>
+
+    <!-- ============ Footer ============ -->
+    <footer class="border-t border-slate-800/70">
+      <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
+        <p class="text-[11px] text-slate-600">© {{ currentYear }} SAPA — Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
+        <p class="flex items-center gap-1.5 text-[11px] text-slate-600">
+          <svg class="h-3.5 w-3.5 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          Aspirasi ditampilkan terbuka — identitas pelapor anonim tetap dilindungi
+        </p>
+      </div>
+    </footer>
   </div>
 </template>
+
+<style>
+/* Inter sebagai identitas tipografi (aman dihapus jika sudah dikonfigurasi di Tailwind) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.sapa-root {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+</style>
+
+<style scoped>
+/* Entrance seksi: fade-up halus */
+.fade-up {
+  opacity: 0;
+  animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Entrance kartu: hanya opacity (agar hover lift tetap bekerja —
+   animasi fill-mode akan mengunci transform bila ikut dianimasikan) */
+.card-enter {
+  opacity: 0;
+  animation: card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes card-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Batasi isi kartu pada 3 baris — bebas dari versi Tailwind */
+.clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up,
+  .card-enter { animation: none; opacity: 1; }
+}
+</style>

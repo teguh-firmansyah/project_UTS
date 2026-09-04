@@ -320,16 +320,34 @@ const currentYear = new Date().getFullYear()
     <!-- ============ Bar atas ============ -->
     <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
       <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
-        <button
-          type="button"
-          @click="router.back()"
-          class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
-        >
-          <svg class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span>Kembali</span>
-        </button>
+
+        <div class="flex min-w-0 items-center gap-3 sm:gap-4">
+          <button
+            type="button"
+            @click="router.back()"
+            class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+          >
+            <svg class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Kembali</span>
+          </button>
+
+          <span class="hidden h-6 w-px bg-slate-800 sm:block" aria-hidden="true"></span>
+
+          <router-link to="/" class="flex min-w-0 items-center gap-2.5 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60">
+            <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800 ring-1 ring-emerald-500/20">
+            <img v-if="!logoFailed" src="../../assets/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
+            <span v-else class="text-sm font-extrabold text-emerald-400">S</span>
+          </div>
+          <div class="hidden min-w-0 sm:block">
+            <p class="text-[15px] font-extrabold leading-none tracking-tight text-white">SAPA</p>
+            <p class="mt-1 hidden truncate text-[9px] font-medium uppercase leading-none tracking-[0.16em] text-slate-500 lg:block">Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
+          </div>
+        </div>
+          </router-link>
+        </div>
 
         <transition name="chip">
           <span

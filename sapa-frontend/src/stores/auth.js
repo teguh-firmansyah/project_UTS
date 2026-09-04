@@ -19,6 +19,14 @@ export const useAuthStore = defineStore('auth', {
     isStaff: (state) => state.user?.roles?.includes('staff') ?? false,
     isCounselor: (state) => state.user?.roles?.includes('counselor') ?? false,
     isAdmin: (state) => state.user?.roles?.includes('admin') ?? false,
+
+    defaultRoute: (state) => {
+      const roles = state.user?.roles ?? []
+      if (roles.includes('admin')) return { name: 'admin-dashboard' }
+      if (roles.includes('counselor')) return { name: 'counselor-bullying-queue' }
+      if (roles.includes('staff')) return { name: 'staff-facility-queue' }
+      return { name: 'dashboard' }
+    },
   },
 
   actions: {
