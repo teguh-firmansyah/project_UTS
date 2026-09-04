@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
 import { toast } from 'vue-sonner'
+import reportService from '@/services/reportService'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,13 +12,19 @@ const route = useRoute()
 const isLoading = ref(false)
 const selectedCategory = ref('aspirasi')
 
-const imageFile = ref(null)
-const imagePreview = ref(null)
+const imageFiles = ref([])
+const imagePreviews = ref([])
 const fileInputRef = ref(null)
 const isDragging = ref(false)
 
+const TYPE_MAP = {
+  aspirasi: 'aspiration',
+  fasilitas: 'facility',
+  bullying: 'bullying',
+}
+
 /* ---------------------------------- */
-/* Kanal laporan (existing + gaya)    */
+/* Kanal laporan (tetap sama)         */
 /* ---------------------------------- */
 const categories = [
   {
@@ -40,7 +47,6 @@ const categories = [
   }
 ]
 
-/* Aksen semantik per kanal */
 const CATEGORY_STYLE = {
   aspirasi: {
     selected: 'border-purple-500/60 bg-purple-500/[0.06]',
@@ -95,19 +101,35 @@ const CATEGORY_GUIDE = {
   },
 }
 
+const FACILITY_CATEGORIES = [
+  { value: 'electricity', label: 'Listrik' },
+  { value: 'furniture', label: 'Perabot' },
+  { value: 'sanitation', label: 'Sanitasi' },
+  { value: 'building', label: 'Bangunan' },
+  { value: 'other', label: 'Lainnya' },
+]
+const DAMAGE_LEVELS = [
+  { value: 'minor', label: 'Ringan' },
+  { value: 'moderate', label: 'Sedang' },
+  { value: 'severe', label: 'Berat' },
+]
+const ASPIRATION_CATEGORIES = [
+  { value: 'academic', label: 'Akademik' },
+  { value: 'facility_policy', label: 'Kebijakan Fasilitas' },
+  { value: 'school_policy', label: 'Kebijakan Sekolah' },
+  { value: 'other', label: 'Lainnya' },
+]
+
 const activeStyle = computed(() => CATEGORY_STYLE[selectedCategory.value] || CATEGORY_STYLE.aspirasi)
 const activeGuide = computed(() => CATEGORY_GUIDE[selectedCategory.value] || CATEGORY_GUIDE.aspirasi)
-
 const categoryCards = categories.map(c => ({ ...c, style: CATEGORY_STYLE[c.id] }))
 
-/* Petunjuk kontekstual untuk kolom isi */
 const contentHint = computed(() => ({
   aspirasi: 'Jelaskan usulan Anda beserta manfaatnya bagi sekolah.',
   fasilitas: 'Sertakan lokasi kerusakan dan dampaknya terhadap kegiatan belajar.',
   bullying: 'Tuliskan kronologi, waktu, dan lokasi kejadian secara berurutan.',
 }[selectedCategory.value]))
 
-/* Alur tindak lanjut — konsisten dengan linimasa halaman detail */
 const followUpSteps = [
   { label: 'Menunggu', desc: 'Laporan masuk antrean petugas', dot: 'bg-amber-500' },
   { label: 'Ditinjau', desc: 'Verifikasi kelengkapan laporan', dot: 'bg-blue-500' },
@@ -115,27 +137,65 @@ const followUpSteps = [
   { label: 'Selesai', desc: 'Laporan ditindaklanjuti tuntas', dot: 'bg-slate-500' },
 ]
 
-/* ---------------------------------- */
-/* Validasi (existing)               */
-/* ---------------------------------- */
 const schema = yup.object({
-  title: yup.string().required('Judul laporan wajib diisi').min(5, 'Judul minimal 5 karakter'),
-  content: yup.string().required('Isi laporan wajib diisi').min(15, 'Isi laporan minimal 15 karakter'),
   category: yup.string().required('Pilih jenis laporan'),
+
+  title: yup.string().when('category', {
+    is: (val) => val !== 'bullying',
+    then: (s) => s.required('Judul laporan wajib diisi').min(10, 'Judul minimal 10 karakter'),
+    otherwise: (s) => s.notRequired(),
+  }),
+
+  content: yup.string().required('Isi laporan wajib diisi').min(20, 'Isi laporan minimal 20 karakter'),
+
   is_anonymous: yup.boolean(),
+
+  // Khusus fasilitas
+  location: yup.string().when('category', {
+    is: 'fasilitas',
+    then: (s) => s.required('Lokasi kerusakan wajib diisi'),
+    otherwise: (s) => s.notRequired(),
+  }),
+  facilityCategory: yup.string().when('category', {
+    is: 'fasilitas',
+    then: (s) => s.required('Pilih kategori fasilitas'),
+    otherwise: (s) => s.notRequired(),
+  }),
+  damageLevel: yup.string().notRequired(),
+
+  // Khusus aspirasi
+  aspirationCategory: yup.string().when('category', {
+    is: 'aspirasi',
+    then: (s) => s.required('Pilih kategori aspirasi'),
+    otherwise: (s) => s.notRequired(),
+  }),
+
+  // Khusus bullying
+  reporterRelation: yup.string().when('category', {
+    is: 'bullying',
+    then: (s) => s.required('Pilih posisi Anda'),
+    otherwise: (s) => s.notRequired(),
+  }),
+  incidentDate: yup.string().notRequired(),
 })
 
 const { handleSubmit, defineField, errors, setFieldValue } = useForm({
   validationSchema: schema,
   initialValues: {
     category: 'aspirasi',
-    is_anonymous: false
+    is_anonymous: false,
   }
 })
 
 const [title, titleAttrs] = defineField('title')
 const [content, contentAttrs] = defineField('content')
 const [is_anonymous] = defineField('is_anonymous')
+const [location, locationAttrs] = defineField('location')
+const [facilityCategory] = defineField('facilityCategory')
+const [damageLevel] = defineField('damageLevel')
+const [aspirationCategory] = defineField('aspirationCategory')
+const [reporterRelation] = defineField('reporterRelation')
+const [incidentDate] = defineField('incidentDate')
 
 onMounted(() => {
   if (route.query.type && ['aspirasi', 'fasilitas', 'bullying'].includes(route.query.type)) {
@@ -149,51 +209,49 @@ const selectCategory = (val) => {
   setFieldValue('category', val)
 }
 
-/* ---------------------------------- */
-/* Lampiran (logika existing +        */
-/* drag&drop, pratinjau, pembersihan) */
-/* ---------------------------------- */
+const MAX_FILES = 3
+
 const processImageFile = (file) => {
   if (!file) return
 
-  if (!file.type.startsWith('image/')) {
-    toast.error('Format berkas tidak didukung. Unggah PNG, JPG, atau JPEG.')
+  if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+    toast.error('Format berkas tidak didukung. Unggah PNG, JPG, JPEG, atau PDF.')
     return
   }
-
   if (file.size > 2 * 1024 * 1024) {
-    toast.error('Ukuran gambar maksimal 2MB!')
+    toast.error('Ukuran berkas maksimal 2MB!')
+    return
+  }
+  if (imageFiles.value.length >= MAX_FILES) {
+    toast.error(`Maksimal ${MAX_FILES} lampiran.`)
     return
   }
 
-  if (imagePreview.value) {
-    URL.revokeObjectURL(imagePreview.value)
+  imageFiles.value.push(file)
+  if (file.type.startsWith('image/')) {
+    imagePreviews.value.push({ name: file.name, url: URL.createObjectURL(file), isImage: true })
+  } else {
+    imagePreviews.value.push({ name: file.name, url: null, isImage: false })
   }
-
-  imageFile.value = file
-  imagePreview.value = URL.createObjectURL(file)
 }
 
 const handleImageChange = (e) => {
-  processImageFile(e.target.files[0])
+  Array.from(e.target.files).forEach(processImageFile)
   e.target.value = ''
 }
 
 const onDrop = (e) => {
   isDragging.value = false
-  processImageFile(e.dataTransfer?.files?.[0])
+  Array.from(e.dataTransfer?.files || []).forEach(processImageFile)
 }
 
-const triggerFilePick = () => {
-  fileInputRef.value?.click()
-}
+const triggerFilePick = () => fileInputRef.value?.click()
 
-const removeImage = () => {
-  if (imagePreview.value) {
-    URL.revokeObjectURL(imagePreview.value)
-  }
-  imageFile.value = null
-  imagePreview.value = null
+const removeImage = (index) => {
+  const preview = imagePreviews.value[index]
+  if (preview?.url) URL.revokeObjectURL(preview.url)
+  imageFiles.value.splice(index, 1)
+  imagePreviews.value.splice(index, 1)
 }
 
 const formatFileSize = (bytes) => {
@@ -203,29 +261,51 @@ const formatFileSize = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-/* ---------------------------------- */
-/* Submit (behavior existing)         */
-/* ---------------------------------- */
 const onSubmit = handleSubmit(async (values) => {
   isLoading.value = true
   try {
     const formData = new FormData()
-    formData.append('title', values.title)
-    formData.append('content', values.content)
-    formData.append('category', values.category)
-    formData.append('is_anonymous', values.is_anonymous ? 1 : 0)
+    formData.append('description', values.content)
+    formData.append('is_anonymous', values.is_anonymous ? '1' : '0')
 
-    if (imageFile.value) {
-      formData.append('image', imageFile.value)
+    let response
+
+    if (selectedCategory.value === 'aspirasi') {
+      formData.append('title', values.title)
+      formData.append('category', values.aspirationCategory)
+      formData.append('is_public', '1')
+      response = await reportService.submitAspiration(Object.fromEntries(formData))
+    }
+
+    if (selectedCategory.value === 'fasilitas') {
+      formData.append('title', values.title)
+      formData.append('location', values.location)
+      formData.append('category', values.facilityCategory)
+      if (values.damageLevel) formData.append('damage_level', values.damageLevel)
+      imageFiles.value.forEach((file) => formData.append('attachments[]', file))
+      response = await reportService.submitFacilityReport(formData)
+    }
+
+    if (selectedCategory.value === 'bullying') {
+      formData.append('reporter_relation', values.reporterRelation)
+      if (values.incidentDate) formData.append('incident_date', values.incidentDate)
+      imageFiles.value.forEach((file) => formData.append('attachments[]', file))
+      response = await reportService.submitBullyingReport(formData)
     }
 
     toast.success('Laporan berhasil dikirim!', {
-      description: 'Laporan Anda akan segera ditinjau oleh pihak sekolah.'
+      description: response?.message || 'Laporan Anda akan segera ditinjau oleh pihak sekolah.'
     })
 
     router.push('/')
   } catch (error) {
-    toast.error(error?.response?.data?.message || 'Gagal mengirim laporan. Silakan coba lagi.')
+    const validationErrors = error?.response?.data?.errors
+    if (validationErrors) {
+      const firstError = Object.values(validationErrors)[0]?.[0]
+      toast.error(firstError || 'Periksa kembali data yang kamu isi.')
+    } else {
+      toast.error(error?.response?.data?.message || 'Gagal mengirim laporan. Silakan coba lagi.')
+    }
   } finally {
     isLoading.value = false
   }
@@ -240,7 +320,6 @@ const currentYear = new Date().getFullYear()
     <!-- ============ Bar atas ============ -->
     <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
       <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
-
         <button
           type="button"
           @click="router.back()"
@@ -269,7 +348,6 @@ const currentYear = new Date().getFullYear()
     <!-- ============ Konten ============ -->
     <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
 
-      <!-- Kepala halaman -->
       <section class="fade-up">
         <div class="flex items-center gap-2.5">
           <span class="h-4 w-[3px] rounded-full bg-emerald-500" aria-hidden="true"></span>
@@ -287,7 +365,6 @@ const currentYear = new Date().getFullYear()
           class="fade-up relative min-w-0 space-y-7 overflow-hidden rounded-xl border border-slate-800 bg-slate-900 p-5 sm:p-6 lg:p-8"
           style="animation-delay: 90ms"
         >
-          <!-- Aksen atas mengikuti kanal terpilih -->
           <span class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r transition-colors duration-300" :class="activeStyle.topBar" aria-hidden="true"></span>
 
           <!-- 01 · Jenis laporan -->
@@ -330,7 +407,6 @@ const currentYear = new Date().getFullYear()
               </button>
             </div>
 
-            <!-- Jaminan keamanan untuk kanal perundungan -->
             <div v-if="selectedCategory === 'bullying'" class="note-enter flex items-start gap-2.5 rounded-lg border border-rose-500/25 bg-rose-500/[0.05] px-3.5 py-3">
               <svg class="mt-0.5 h-4 w-4 shrink-0 text-rose-400/90" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -341,8 +417,247 @@ const currentYear = new Date().getFullYear()
             </div>
           </section>
 
-          <!-- 02 · Judul -->
+          <!-- 02 · Detail spesifik per jenis (BARU — wajib diisi sesuai backend) -->
           <section class="space-y-3.5 border-t border-slate-800/70 pt-6">
+            <div class="flex items-center gap-2.5">
+              <span class="font-mono text-[11px] font-semibold text-emerald-500/80">02</span>
+              <h2 class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Detail Tambahan</h2>
+            </div>
+
+            <!-- Fasilitas -->
+            <div v-if="selectedCategory === 'fasilitas'" class="space-y-3.5">
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-medium text-slate-400">Lokasi Kerusakan</label>
+                <input
+                  v-model="location"
+                  v-bind="locationAttrs"
+                  type="text"
+                  placeholder="Contoh: Toilet Lantai 2 Gedung B"
+                  class="w-full rounded-lg border bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+                  :class="errors.location ? 'border-rose-500/60' : 'border-slate-800'"
+                />
+                <p v-if="errors.location" class="text-[11px] font-medium text-rose-400">{{ errors.location }}</p>
+              </div>
+
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  <!-- Kategori Fasilitas -->
+  <div class="space-y-1.5">
+    <label class="text-[11px] font-medium text-slate-400">Kategori Fasilitas</label>
+    <div class="relative">
+      <!-- Icon Filter/Kategori Kiri -->
+      <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+      </svg>
+
+      <!-- Select Dropdown -->
+      <select
+        v-model="facilityCategory"
+        class="w-full cursor-pointer appearance-none rounded-lg border bg-slate-950/60 py-2.5 pl-10 pr-9 text-sm text-slate-100 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+        :class="errors.facilityCategory ? 'border-rose-500/60' : 'border-slate-800'"
+      >
+        <!-- Placeholder (Diisi default & tidak bisa dipilih kembali) -->
+        <option value="" disabled selected hidden class="bg-slate-900 text-slate-500">
+          Pilih kategori
+        </option>
+        <option
+          v-for="opt in FACILITY_CATEGORIES"
+          :key="opt.value"
+          :value="opt.value"
+          class="bg-slate-900 text-slate-100"
+        >
+          {{ opt.label }}
+        </option>
+      </select>
+
+      <!-- Icon Chevron Panah Kanan -->
+      <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+
+    <!-- Pesan Error Validation -->
+    <p v-if="errors.facilityCategory" class="text-[11px] font-medium text-rose-400">
+      {{ errors.facilityCategory }}
+    </p>
+  </div>
+
+  <!-- Tingkat Kerusakan (Opsional) -->
+  <div class="space-y-1.5">
+    <label class="text-[11px] font-medium text-slate-400">
+      Tingkat Kerusakan <span class="text-slate-600">(opsional)</span>
+    </label>
+    <div class="relative">
+      <!-- Icon Indicator/Gauge Kiri -->
+      <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+
+      <!-- Select Dropdown -->
+      <select
+        v-model="damageLevel"
+        class="w-full cursor-pointer appearance-none rounded-lg border border-slate-800 bg-slate-950/60 py-2.5 pl-10 pr-9 text-sm text-slate-100 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+      >
+        <!-- Placeholder Opsional (Bisa dipilih kembali untuk mengosongkan pilihan) -->
+        <option
+          v-for="opt in DAMAGE_LEVELS"
+          :key="opt.value"
+          :value="opt.value"
+          class="bg-slate-900 text-slate-100"
+        >
+          {{ opt.label }}
+        </option>
+      </select>
+
+      <!-- Icon Chevron Panah Kanan -->
+      <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+  </div>
+</div>
+            </div>
+
+            <!-- Aspirasi -->
+<div v-else-if="selectedCategory === 'aspirasi'" class="space-y-1.5">
+  <label class="text-[11px] font-medium text-slate-400">Kategori Aspirasi</label>
+  <div class="relative">
+    <!-- Icon Filter/Kategori Kiri -->
+    <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+    </svg>
+
+    <!-- Select Dropdown -->
+    <select
+      v-model="aspirationCategory"
+      class="w-full cursor-pointer appearance-none rounded-lg border bg-slate-950/60 py-2.5 pl-10 pr-9 text-sm text-slate-100 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+      :class="errors.aspirationCategory ? 'border-rose-500/60' : 'border-slate-800'"
+    >
+      <option
+        v-for="opt in ASPIRATION_CATEGORIES"
+        :key="opt.value"
+        :value="opt.value"
+        class="bg-slate-900 text-slate-100"
+      >
+        {{ opt.label }}
+      </option>
+    </select>
+
+    <!-- Icon Chevron Panah Kanan -->
+    <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
+
+  <!-- Pesan Error Validation -->
+  <p v-if="errors.aspirationCategory" class="text-[11px] font-medium text-rose-400">
+    {{ errors.aspirationCategory }}
+  </p>
+</div>
+
+            <!-- Bullying -->
+            <div v-else class="space-y-3.5">
+              <div class="space-y-1.5">
+  <label class="text-[11px] font-medium text-slate-400">
+    Posisi Anda
+  </label>
+
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <!-- Opsi 1: Korban langsung -->
+    <label
+      class="group relative flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-all duration-200"
+      :class="reporterRelation === 'victim' 
+        ? 'border-rose-500/50 bg-rose-500/[0.06] ring-1 ring-rose-500/30' 
+        : 'border-slate-800 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-900/60'"
+    >
+      <input 
+        type="radio" 
+        value="victim" 
+        v-model="reporterRelation" 
+        class="sr-only" 
+      />
+      <div class="flex items-center gap-2.5">
+        <!-- Icon Korban -->
+        <span 
+          class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors duration-200"
+          :class="reporterRelation === 'victim' ? 'border-rose-500/40 bg-rose-500/15 text-rose-400' : 'border-slate-800 bg-slate-900 text-slate-500 group-hover:text-slate-400'"
+        >
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </span>
+        <span class="text-xs font-semibold" :class="reporterRelation === 'victim' ? 'text-slate-100' : 'text-slate-300'">
+          Korban langsung
+        </span>
+      </div>
+
+      <!-- Custom Radio Indicator Ring -->
+      <span
+        class="flex h-4 w-4 items-center justify-center rounded-full border transition-colors duration-200"
+        :class="reporterRelation === 'victim' ? 'border-rose-400 bg-rose-500' : 'border-slate-700 bg-slate-900'"
+      >
+        <span v-if="reporterRelation === 'victim'" class="h-1.5 w-1.5 rounded-full bg-slate-950"></span>
+      </span>
+    </label>
+
+    <!-- Opsi 2: Saksi -->
+    <label
+      class="group relative flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-all duration-200"
+      :class="reporterRelation === 'witness' 
+        ? 'border-rose-500/50 bg-rose-500/[0.06] ring-1 ring-rose-500/30' 
+        : 'border-slate-800 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-900/60'"
+    >
+      <input 
+        type="radio" 
+        value="witness" 
+        v-model="reporterRelation" 
+        class="sr-only" 
+      />
+      <div class="flex items-center gap-2.5">
+        <!-- Icon Saksi -->
+        <span 
+          class="flex h-7 w-7 items-center justify-center rounded-md border transition-colors duration-200"
+          :class="reporterRelation === 'witness' ? 'border-rose-500/40 bg-rose-500/15 text-rose-400' : 'border-slate-800 bg-slate-900 text-slate-500 group-hover:text-slate-400'"
+        >
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        </span>
+        <span class="text-xs font-semibold" :class="reporterRelation === 'witness' ? 'text-slate-100' : 'text-slate-300'">
+          Saksi
+        </span>
+      </div>
+
+      <!-- Custom Radio Indicator Ring -->
+      <span
+        class="flex h-4 w-4 items-center justify-center rounded-full border transition-colors duration-200"
+        :class="reporterRelation === 'witness' ? 'border-rose-400 bg-rose-500' : 'border-slate-700 bg-slate-900'"
+      >
+        <span v-if="reporterRelation === 'witness'" class="h-1.5 w-1.5 rounded-full bg-slate-950"></span>
+      </span>
+    </label>
+  </div>
+
+  <!-- Pesan Error Validation -->
+  <p v-if="errors.reporterRelation" class="text-[11px] font-medium text-rose-400">
+    {{ errors.reporterRelation }}
+  </p>
+</div>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-medium text-slate-400">Tanggal Kejadian <span class="text-slate-600">(opsional)</span></label>
+                <input
+                  v-model="incidentDate"
+                  type="date"
+                  :max="new Date().toISOString().split('T')[0]"
+                  class="sapa-date-input w-full rounded-lg border border-slate-800 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+                />
+              </div>
+            </div>
+          </section>
+
+          <!-- 02 · Judul (disembunyikan untuk bullying, backend generate otomatis) -->
+          <section v-if="selectedCategory !== 'bullying'" class="space-y-3.5 border-t border-slate-800/70 pt-6">
             <div class="flex items-center justify-between gap-3">
               <div class="flex items-center gap-2.5">
                 <span class="font-mono text-[11px] font-semibold text-emerald-500/80">02</span>
@@ -350,8 +665,8 @@ const currentYear = new Date().getFullYear()
               </div>
               <span
                 class="font-mono text-[10px] tabular-nums"
-                :class="(title?.length || 0) >= 5 ? 'text-emerald-500/80' : 'text-slate-600'"
-                title="Minimal 5 karakter"
+                :class="(title?.length || 0) >= 10 ? 'text-emerald-500/80' : 'text-slate-600'"
+                title="Minimal 10 karakter"
               >{{ title?.length || 0 }} karakter</span>
             </div>
 
@@ -361,7 +676,7 @@ const currentYear = new Date().getFullYear()
                 v-model="title"
                 v-bind="titleAttrs"
                 type="text"
-                placeholder="Contoh: AC Rusak / Usulan Event Coding / Laporan Bullying"
+                placeholder="Contoh: AC Rusak / Usulan Event Coding"
                 class="w-full rounded-lg border bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
                 :class="errors.title ? 'border-rose-500/60' : 'border-slate-800'"
               />
@@ -383,8 +698,8 @@ const currentYear = new Date().getFullYear()
               </div>
               <span
                 class="font-mono text-[10px] tabular-nums"
-                :class="(content?.length || 0) >= 15 ? 'text-emerald-500/80' : 'text-slate-600'"
-                title="Minimal 15 karakter"
+                :class="(content?.length || 0) >= 20 ? 'text-emerald-500/80' : 'text-slate-600'"
+                title="Minimal 20 karakter"
               >{{ content?.length || 0 }} karakter</span>
             </div>
 
@@ -409,25 +724,25 @@ const currentYear = new Date().getFullYear()
             </div>
           </section>
 
-          <!-- 04 · Lampiran -->
-          <section class="space-y-3.5 border-t border-slate-800/70 pt-6">
+          <!-- 04 · Lampiran (multi-file, max 3) — disembunyikan untuk aspirasi (backend tidak dukung) -->
+          <section v-if="selectedCategory !== 'aspirasi'" class="space-y-3.5 border-t border-slate-800/70 pt-6">
             <div class="flex items-center gap-2.5">
               <span class="font-mono text-[11px] font-semibold text-emerald-500/80">04</span>
-              <h2 class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Lampiran Bukti Foto <span class="font-normal normal-case tracking-normal text-slate-600">(opsional)</span></h2>
+              <h2 class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Lampiran Bukti <span class="font-normal normal-case tracking-normal text-slate-600">(opsional, maks 3 berkas)</span></h2>
             </div>
 
             <input
               id="report-image-input"
               ref="fileInputRef"
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
+              multiple
               class="hidden"
               @change="handleImageChange"
             />
 
-            <!-- Zona unggah / seret -->
             <label
-              v-if="!imagePreview"
+              v-if="imageFiles.length < MAX_FILES"
               for="report-image-input"
               class="flex h-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 text-center transition-all duration-200"
               :class="isDragging ? 'border-emerald-500/70 bg-emerald-500/[0.06]' : 'border-slate-700/80 bg-slate-950/40 hover:border-emerald-500/50 hover:bg-slate-950/70'"
@@ -441,32 +756,28 @@ const currentYear = new Date().getFullYear()
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <p class="mt-3 text-xs text-slate-400"><span class="font-semibold text-emerald-400">Klik untuk unggah</span> atau seret foto ke sini</p>
-                <p class="mt-1 text-[10px] text-slate-600">PNG, JPG, JPEG · Maks. 2MB</p>
+                <p class="mt-3 text-xs text-slate-400"><span class="font-semibold text-emerald-400">Klik untuk unggah</span> atau seret berkas ke sini</p>
+                <p class="mt-1 text-[10px] text-slate-600">PNG, JPG, JPEG, PDF · Maks. 2MB per berkas · Maks. {{ MAX_FILES }} berkas</p>
               </div>
             </label>
 
-            <!-- Pratinjau lampiran -->
-            <div v-else class="note-enter flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3.5 sm:flex-row sm:items-center">
-              <img :src="imagePreview" alt="Pratinjau lampiran" class="h-20 w-20 shrink-0 rounded-lg border border-slate-800 object-cover" />
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-xs font-medium text-slate-200">{{ imageFile?.name || 'Lampiran' }}</p>
-                <p class="mt-0.5 font-mono text-[10px] text-slate-500">{{ formatFileSize(imageFile?.size) }} · siap diunggah</p>
-              </div>
-              <div class="flex gap-2">
+            <div v-if="imagePreviews.length" class="space-y-2.5">
+              <div
+                v-for="(preview, index) in imagePreviews"
+                :key="index"
+                class="note-enter flex items-center gap-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3.5"
+              >
+                <img v-if="preview.isImage" :src="preview.url" alt="Pratinjau lampiran" class="h-16 w-16 shrink-0 rounded-lg border border-slate-800 object-cover" />
+                <div v-else class="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-slate-500 text-[10px] font-semibold">PDF</div>
+
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-xs font-medium text-slate-200">{{ preview.name }}</p>
+                  <p class="mt-0.5 font-mono text-[10px] text-slate-500">{{ formatFileSize(imageFiles[index]?.size) }} · siap diunggah</p>
+                </div>
+
                 <button
                   type="button"
-                  @click="triggerFilePick"
-                  class="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-[11px] font-semibold text-slate-300 transition-all duration-150 hover:border-emerald-500/40 hover:text-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
-                >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Ganti
-                </button>
-                <button
-                  type="button"
-                  @click="removeImage"
+                  @click="removeImage(index)"
                   class="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-[11px] font-semibold text-slate-300 transition-all duration-150 hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
                 >
                   <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -562,8 +873,6 @@ const currentYear = new Date().getFullYear()
 
         <!-- ===== Sidebar panduan ===== -->
         <aside class="space-y-5 lg:sticky lg:top-20">
-
-          <!-- Panduan dinamis per kanal -->
           <div class="fade-up rounded-xl border border-slate-800 bg-slate-900 p-5" style="animation-delay: 150ms">
             <div class="flex items-center justify-between gap-3">
               <h3 class="text-sm font-bold tracking-tight text-slate-100">Panduan Pengisian</h3>
@@ -583,7 +892,6 @@ const currentYear = new Date().getFullYear()
             </ul>
           </div>
 
-          <!-- Catatan darurat, hanya untuk kanal perundungan -->
           <div v-if="selectedCategory === 'bullying'" class="note-enter flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-4">
             <svg class="mt-0.5 h-4 w-4 shrink-0 text-amber-400/90" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -594,7 +902,6 @@ const currentYear = new Date().getFullYear()
             </div>
           </div>
 
-          <!-- Alur tindak lanjut -->
           <div class="fade-up rounded-xl border border-slate-800 bg-slate-900 p-5" style="animation-delay: 200ms">
             <h3 class="text-sm font-bold tracking-tight text-slate-100">Alur Tindak Lanjut</h3>
 
@@ -619,7 +926,6 @@ const currentYear = new Date().getFullYear()
       </div>
     </main>
 
-    <!-- ============ Footer ============ -->
     <footer class="border-t border-slate-800/70">
       <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
         <p class="text-[11px] text-slate-600">© {{ currentYear }} SAPA — Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
@@ -630,52 +936,53 @@ const currentYear = new Date().getFullYear()
 </template>
 
 <style>
-/* Inter sebagai identitas tipografi (aman dihapus jika sudah dikonfigurasi di Tailwind) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
 .sapa-root {
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 </style>
 
 <style scoped>
-/* Entrance: fade-up halus dengan stagger */
 .fade-up {
   opacity: 0;
   animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-/* Elemen yang muncul secara kondisional (catatan, pratinjau) */
 .note-enter {
   animation: note-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-
 @keyframes note-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-/* Chip "Anonim Aktif" di header */
 .chip-enter-active,
 .chip-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-
 .chip-enter-from,
 .chip-leave-to {
   opacity: 0;
   transform: translateY(-4px);
 }
-
 @media (prefers-reduced-motion: reduce) {
   .fade-up,
   .note-enter { animation: none; opacity: 1; }
   .chip-enter-active,
   .chip-leave-active { transition: none; }
+}
+
+/* Styling Ikon Picker Kalender Bawaan Browser */
+.sapa-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.8) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.9);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.sapa-date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 </style>
