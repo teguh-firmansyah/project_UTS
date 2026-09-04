@@ -34,7 +34,8 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     await authStore.login(values)
     toast.success('Login berhasil!')
-    router.push(route.query.redirect || '/')
+    const target = route.query.redirect || authStore.defaultRoute
+    router.push(target)
   } catch {
     toast.error(authStore.error || 'Login gagal, periksa email dan password.')
   }
