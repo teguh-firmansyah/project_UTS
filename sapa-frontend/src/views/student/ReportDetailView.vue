@@ -224,7 +224,7 @@ onMounted(() => {
 
     <!-- ============ Bar atas ============ -->
     <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
-      <div class="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
+      <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
 
         <button
           type="button"
@@ -250,7 +250,7 @@ onMounted(() => {
     </header>
 
     <!-- ============ Konten ============ -->
-    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+    <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
 
       <!-- ===== Skeleton pemuatan ===== -->
       <div v-if="isLoading" class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]" aria-busy="true">
