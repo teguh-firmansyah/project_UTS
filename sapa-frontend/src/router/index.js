@@ -1,7 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import ProfileView from '@/views/student/ProfileView.vue'
 
 const routes = [
+
+  // ================= PROFILE =================
+  {
+    path: '/profile',
+    name: 'profile',
+    component: () => import('@/views/student/ProfileView.vue'),
+    meta: { requiresAuth: true },
+  },
+
   // ================= PUBLIC =================
   {
     path: '/login',
