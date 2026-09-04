@@ -250,13 +250,23 @@ async function handleLogout() {
 
           <div class="hidden h-6 w-px bg-slate-800 md:block"></div>
 
-          <div class="hidden items-center gap-2.5 md:flex">
-            <div class="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold text-emerald-400">{{ initials }}</div>
-            <div class="hidden max-w-[150px] leading-tight xl:block">
-              <p class="truncate text-xs font-semibold text-slate-200">{{ authStore.user?.name || 'Siswa SAPA' }}</p>
-              <p class="mt-0.5 truncate text-[10px] text-slate-500">{{ authStore.user?.class_name || 'Kelas —' }}</p>
-            </div>
-          </div>
+          <router-link
+              to="/profile"
+              title="Lihat profil saya"
+              class="group hidden items-center gap-2.5 rounded-lg p-1 transition-all hover:bg-slate-900/80 md:flex focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+            >
+              <div class="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold text-emerald-400 transition-all duration-200 group-hover:border-emerald-500/60 group-hover:bg-emerald-500/20">
+                {{ initials }}
+              </div>
+              <div class="hidden max-w-[150px] leading-tight xl:block text-left">
+                <p class="truncate text-xs font-semibold text-slate-200 transition-colors duration-200 group-hover:text-emerald-400">
+                  {{ authStore.user?.name || 'Siswa SAPA' }}
+                </p>
+                <p class="mt-0.5 truncate text-[10px] text-slate-500">
+                  {{ authStore.user?.class_name || 'Kelas —' }}
+                </p>
+              </div>
+            </router-link>
 
           <button
             type="button"
@@ -328,16 +338,24 @@ async function handleLogout() {
                 </span>
               </div>
 
-              <div class="mt-4 flex items-center gap-3.5">
-                <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-sm font-bold text-emerald-400">
+              <router-link
+                to="/profile"
+                title="Lihat profil saya"
+                class="group mt-4 flex items-center gap-3.5 rounded-xl p-2 transition-all duration-200 hover:bg-slate-900/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+              >
+                <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-sm font-bold text-emerald-400 transition-all duration-200 group-hover:border-emerald-500/60 group-hover:bg-emerald-500/20">
                   {{ initials }}
                   <span class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-slate-950 bg-emerald-500" aria-hidden="true"></span>
                 </div>
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-semibold text-white">{{ authStore.user?.name || 'Siswa SAPA' }}</p>
-                  <p class="mt-0.5 truncate text-xs text-slate-400">{{ authStore.user?.class_name || 'Kelas belum diatur' }}</p>
+                <div class="min-w-0 text-left">
+                  <p class="truncate text-sm font-semibold text-white transition-colors duration-200 group-hover:text-emerald-400">
+                    {{ authStore.user?.name || 'Siswa SAPA' }}
+                  </p>
+                  <p class="mt-0.5 truncate text-xs text-slate-400">
+                    {{ authStore.user?.class_name || 'Kelas belum diatur' }}
+                  </p>
                 </div>
-              </div>
+              </router-link>
 
               <div class="mt-5 flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/70 px-3.5 py-3">
                 <div>
