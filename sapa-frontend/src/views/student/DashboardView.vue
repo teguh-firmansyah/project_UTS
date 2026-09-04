@@ -25,7 +25,7 @@ const reports = ref([
     report_code: 'REP-2026-002',
     title: 'Usulan Penambahan Ekskul Coding & Robotik',
     type: 'aspiration',
-    status: 'pending',
+    status: 'resolved',
     priority: 'medium',
     created_at: '2026-03-02T10:15:00Z',
   },
@@ -35,6 +35,15 @@ const reports = ref([
     title: 'Laporan Kerusakan Lampu Lapangan Basket',
     type: 'facility',
     status: 'resolved',
+    priority: 'low',
+    created_at: '2026-02-20T14:00:00Z',
+  },
+  {
+    id: 4,
+    report_code: 'REP-2026-004',
+    title: 'Permintaan Penambahan Meja dan Kursi di Perpustakaan',
+    type: 'facility',
+    status: 'pending',
     priority: 'low',
     created_at: '2026-02-20T14:00:00Z',
   },
@@ -220,6 +229,16 @@ async function handleLogout() {
         <!-- Aksi akun -->
         <div class="flex shrink-0 items-center gap-2 sm:gap-3">
           <router-link
+    to="/aspirations"
+    class="group inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-md shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 hover:shadow-emerald-500/30 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+  >
+    <svg class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+    </svg>
+    <span>Lihat Aspirasi</span>
+  </router-link>
+
+  <router-link
     to="/reports/new"
     class="group inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-emerald-500 px-2.5 py-1.5 text-xs font-semibold text-slate-950 shadow-md shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 hover:shadow-emerald-500/30 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
   >
