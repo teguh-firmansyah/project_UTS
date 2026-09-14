@@ -1,15 +1,31 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import ProfileView from '@/views/student/ProfileView.vue'
 
 const routes = [
 
-  // ================= PROFILE =================
+  // ================= PROFILE (DYNAMIC REDIRECT & ROLE BASED) =================
   {
     path: '/profile',
     name: 'profile',
-    component: () => import('@/views/student/ProfileView.vue'),
+    redirect: (to) => {
+      const authStore = useAuthStore()
+      if (authStore.hasRole('counselor')) return { name: 'counselor-profile' }
+      if (authStore.hasRole('student')) return { name: 'student-profile' }
+      return { name: 'student-profile' } // default fallback
+    },
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/student/profile',
+    name: 'student-profile',
+    component: () => import('@/views/student/ProfileView.vue'),
+    meta: { requiresAuth: true, roles: ['student'] },
+  },
+  {
+    path: '/counselor/profile',
+    name: 'counselor-profile',
+    component: () => import('@/views/counselor/ProfileView.vue'),
+    meta: { requiresAuth: true, roles: ['counselor'] },
   },
 
   // ================= PUBLIC =================
@@ -72,6 +88,19 @@ const routes = [
     path: '/counselor/bullying-queue',
     name: 'counselor-bullying-queue',
     component: () => import('@/views/counselor/BullyingQueueView.vue'),
+    meta: { requiresAuth: true, roles: ['counselor'] },
+  },
+  {
+    path: '/counselor/bullying-reports/:id',
+    name: 'counselor-bullying-detail',
+    component: () => import('@/views/counselor/BullyingDetailView.vue'),
+    meta: { requiresAuth: true, roles: ['counselor'] },
+    props: true,
+  },
+  {
+    path: '/counselor/archived-reports',
+    name: 'counselor-archived-reports',
+    component: () => import('@/views/counselor/ArchivedReportsView.vue'),
     meta: { requiresAuth: true, roles: ['counselor'] },
   },
 
