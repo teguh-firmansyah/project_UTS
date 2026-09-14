@@ -1,15 +1,18 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
+import reportService from '@/services/reportService'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const logoFailed = ref(false)
+const isLoading = ref(true)
+const isLoadingStats = ref(true)
 
-/* Inisial nama petugas BK untuk avatar (existing) */
+/* Inisial nama petugas BK untuk avatar */
 const initials = computed(() => {
   const name = authStore.user?.name || 'Guru BK'
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -25,89 +28,118 @@ const greeting = computed(() => {
   return 'Selamat malam'
 })
 
-/* Logout (behavior existing + umpan balik toast) */
 const handleLogout = async () => {
-  if (authStore.logout) {
-    await authStore.logout()
-  }
+  await authStore.logout()
   toast.success('Berhasil keluar dari sistem.')
   router.push({ name: 'login' })
 }
 
 /* ---------------------------------- */
-/* State filter & pencarian (existing)*/
+/* State filter & pencarian            */
 /* ---------------------------------- */
 const searchQuery = ref('')
 const selectedStatus = ref('ALL')
 
-/* Data laporan bullying (existing, verbatim) */
-const reports = ref([
-  {
-    id: 1,
-    ticket_code: 'RPT-2026-001',
-    category: 'Perundungan Fisik',
-    reporter_relation: 'Saksi',
-    is_anonymous: false,
-    incident_date: '2026-09-12',
-    created_at: '2026-09-12 14:30',
-    status: 'Menunggu',
-    priority: 'Tinggi',
-  },
-  {
-    id: 2,
-    ticket_code: 'RPT-2026-004',
-    category: 'Cyberbullying',
-    reporter_relation: 'Korban',
-    is_anonymous: true,
-    incident_date: '2026-09-11',
-    created_at: '2026-09-11 09:15',
-    status: 'Ditinjau',
-    priority: 'Tinggi',
-  },
-  {
-    id: 3,
-    ticket_code: 'RPT-2026-008',
-    category: 'Perundungan Verbal',
-    reporter_relation: 'Korban',
-    is_anonymous: false,
-    incident_date: '2026-09-10',
-    created_at: '2026-09-10 16:45',
-    status: 'Diproses',
-    priority: 'Tinggi',
-  },
-  {
-    id: 4,
-    ticket_code: 'RPT-2026-012',
-    category: 'Pemerasan / Pengancaman',
-    reporter_relation: 'Saksi',
-    is_anonymous: true,
-    incident_date: '2026-09-08',
-    created_at: '2026-09-08 11:20',
-    status: 'Selesai',
-    priority: 'Tinggi',
-  }
-])
+/* ---------------------------------- */
+/* Mapping status backend <-> label UI */
+/* Backend: pending, reviewing, in_progress, resolved, rejected        */
+/* ---------------------------------- */
+const STATUS_MAP = {
+  pending: 'Menunggu',
+  reviewing: 'Ditinjau',
+  in_progress: 'Diproses',
+  resolved: 'Selesai',
+  rejected: 'Ditolak',
+}
+const STATUS_MAP_REVERSE = {
+  Menunggu: 'pending',
+  Ditinjau: 'reviewing',
+  Diproses: 'in_progress',
+  Selesai: 'resolved',
+  Ditolak: 'rejected',
+}
 
-/* Filter (logika existing + urut terbaru lebih dulu) */
-const filteredReports = computed(() => {
-  const result = reports.value.filter(item => {
-    const matchesSearch = item.ticket_code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          item.category.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesStatus = selectedStatus.value === 'ALL' || item.status === selectedStatus.value
-    return matchesSearch && matchesStatus
-  })
-  return [...result].sort((a, b) => {
-    const da = new Date(String(a.created_at).replace(' ', 'T')).getTime()
-    const db = new Date(String(b.created_at).replace(' ', 'T')).getTime()
-    return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da)
-  })
+const RELATION_MAP = {
+  victim: 'Korban',
+  witness: 'Saksi',
+}
+
+/* ---------------------------------- */
+/* Data laporan bullying — dari API, bukan dummy lagi                  */
+/* ---------------------------------- */
+const reports = ref([])
+const stats = ref(null)
+
+async function loadReports() {
+  isLoading.value = true
+  try {
+    const params = {}
+    if (selectedStatus.value !== 'ALL') {
+      params.status = STATUS_MAP_REVERSE[selectedStatus.value]
+    }
+
+    const data = await reportService.getBullyingQueue(params)
+
+    // Mapping response backend ke bentuk yang dipakai UI ini
+    reports.value = data.data.map((r) => ({
+      id: r.id,
+      ticket_code: r.report_code,
+      category: r.title, // backend generate otomatis "Laporan Bullying"
+      reporter_relation: RELATION_MAP[r.detail?.reporter_relation] ?? '—',
+      is_anonymous: r.is_anonymous,
+      incident_date: r.detail?.incident_date ?? null,
+      created_at: r.created_at,
+      status: STATUS_MAP[r.status] ?? r.status,
+      priority: r.priority === 'urgent' || r.priority === 'high' ? 'Tinggi'
+        : r.priority === 'medium' ? 'Sedang' : 'Rendah',
+    }))
+  } catch {
+    toast.error('Gagal memuat antrian laporan bullying.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function loadStats() {
+  isLoadingStats.value = true
+  try {
+    stats.value = await reportService.getBullyingStats()
+  } catch {
+    toast.error('Gagal memuat statistik.')
+  } finally {
+    isLoadingStats.value = false
+  }
+}
+
+onMounted(() => {
+  loadReports()
+  loadStats()
 })
 
-/* Counter stats (computed existing) */
-const totalPending = computed(() => reports.value.filter(r => r.status === 'Menunggu').length)
-const totalInReview = computed(() => reports.value.filter(r => r.status === 'Ditinjau' || r.status === 'Diproses').length)
-const totalResolved = computed(() => reports.value.filter(r => r.status === 'Selesai').length)
-const totalCases = computed(() => reports.value.length)
+/* Reload dari server saat filter status berubah — bukan filter client-side lagi,
+   karena backend sudah sediakan filter via query param */
+function selectStatus(value) {
+  selectedStatus.value = value
+  loadReports()
+}
+
+/* ---------------------------------- */
+/* Filter search tetap di client (ringan, tidak perlu roundtrip API)   */
+/* ---------------------------------- */
+const filteredReports = computed(() => {
+  if (!searchQuery.value.trim()) return reports.value
+  const q = searchQuery.value.toLowerCase()
+  return reports.value.filter(item =>
+    item.ticket_code.toLowerCase().includes(q) ||
+    item.category.toLowerCase().includes(q)
+  )
+})
+
+/* Counter stats — dari endpoint /bullying-stats, bukan dihitung di client */
+const totalPending = computed(() => stats.value?.pending ?? 0)
+const totalInReview = computed(() => (stats.value?.reviewing ?? 0) + (stats.value?.in_progress ?? 0))
+const totalResolved = computed(() => stats.value?.resolved ?? 0)
+const totalCases = computed(() => stats.value?.total ?? 0)
 const activeCases = computed(() => totalPending.value + totalInReview.value)
 
 const activeSummary = computed(() => {
@@ -120,60 +152,35 @@ const activeSummary = computed(() => {
   return parts.join(' · ')
 })
 
-/* Kartu statistik — pola identik dengan dashboard siswa */
 const statCards = computed(() => {
-  const total = reports.value.length
+  const total = totalCases.value
   const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0)
   return [
     {
-      label: 'Total Kasus',
-      value: total,
-      caption: 'Seluruh kasus dalam antrian BK',
-      pct: 100,
+      label: 'Total Kasus', value: total, caption: 'Seluruh kasus dalam antrian BK', pct: 100,
       icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-      num: 'text-white',
-      tile: 'border-rose-500/25 bg-rose-500/10 text-rose-400',
-      bar: 'bg-rose-500',
+      num: 'text-white', tile: 'border-rose-500/25 bg-rose-500/10 text-rose-400', bar: 'bg-rose-500',
     },
     {
-      label: 'Butuh Respon',
-      value: totalPending.value,
-      caption: 'Laporan baru berstatus Menunggu',
-      pct: pct(totalPending.value),
+      label: 'Butuh Respon', value: totalPending.value, caption: 'Laporan baru berstatus Menunggu', pct: pct(totalPending.value),
       icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-      num: 'text-amber-400',
-      tile: 'border-amber-500/25 bg-amber-500/10 text-amber-400',
-      bar: 'bg-amber-500',
-      pulse: true,
+      num: 'text-amber-400', tile: 'border-amber-500/25 bg-amber-500/10 text-amber-400', bar: 'bg-amber-500', pulse: true,
     },
     {
-      label: 'Dalam Penanganan',
-      value: totalInReview.value,
-      caption: 'Sedang ditinjau / diproses BK',
-      pct: pct(totalInReview.value),
+      label: 'Dalam Penanganan', value: totalInReview.value, caption: 'Sedang ditinjau / diproses BK', pct: pct(totalInReview.value),
       icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
-      num: 'text-emerald-400',
-      tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
-      bar: 'bg-emerald-500',
+      num: 'text-emerald-400', tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400', bar: 'bg-emerald-500',
     },
     {
-      label: 'Kasus Selesai',
-      value: totalResolved.value,
-      caption: 'Laporan tuntas ditangani',
-      pct: pct(totalResolved.value),
+      label: 'Kasus Selesai', value: totalResolved.value, caption: 'Laporan tuntas ditangani', pct: pct(totalResolved.value),
       icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-      num: 'text-slate-300',
-      tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300',
-      bar: 'bg-slate-500',
+      num: 'text-slate-300', tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300', bar: 'bg-slate-500',
     },
   ]
 })
 
 /* ---------------------------------- */
-/* Helper badge status — warna        */
-/* diselaraskan sistem                */
-/* (Menunggu=amber, Ditinjau=blue,    */
-/* Diproses=emerald, Selesai=slate)   */
+/* Helper badge status                 */
 /* ---------------------------------- */
 const getStatusBadge = (status) => {
   switch (status) {
@@ -186,7 +193,6 @@ const getStatusBadge = (status) => {
   }
 }
 
-/* Prioritas — bar sinyal ala dashboard siswa */
 const getPriority = (priority) => {
   const map = {
     'Tinggi': { label: 'Tinggi', level: 3, text: 'text-rose-400', bar: 'bg-rose-500' },
@@ -196,7 +202,6 @@ const getPriority = (priority) => {
   return map[priority] || map['Rendah']
 }
 
-/* Pil filter status + hitungan */
 const statusOptions = [
   { value: 'ALL',       label: 'Semua',     active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
   { value: 'Menunggu',  label: 'Menunggu',  active: 'border-amber-500/50 bg-amber-500/15 text-amber-400' },
@@ -207,9 +212,14 @@ const statusOptions = [
 
 const pillIdle = 'border-slate-800 bg-slate-950/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
 
+/* Hitung jumlah per status dari data yang sedang termuat (approksimasi tampilan pill) */
 const statusCounts = computed(() => {
-  const counts = { ALL: reports.value.length }
-  for (const r of reports.value) counts[r.status] = (counts[r.status] || 0) + 1
+  const counts = { ALL: totalCases.value }
+  counts['Menunggu'] = totalPending.value
+  counts['Ditinjau'] = stats.value?.reviewing ?? 0
+  counts['Diproses'] = stats.value?.in_progress ?? 0
+  counts['Selesai'] = totalResolved.value
+  counts['Ditolak'] = stats.value?.rejected ?? 0
   return counts
 })
 
@@ -217,9 +227,9 @@ const hasActiveFilters = computed(() => searchQuery.value.trim() !== '' || selec
 const clearFilters = () => {
   searchQuery.value = ''
   selectedStatus.value = 'ALL'
+  loadReports()
 }
 
-/* Baris siap-render dengan badge ter-prakomputasi */
 const reportRows = computed(() =>
   filteredReports.value.map(item => ({
     ...item,
@@ -228,7 +238,6 @@ const reportRows = computed(() =>
   }))
 )
 
-/* Format tanggal (string 'YYYY-MM-DD' & 'YYYY-MM-DD HH:mm') */
 const formatIncidentDate = (d) => {
   if (!d) return '—'
   const date = new Date(String(d).replace(' ', 'T'))
@@ -245,7 +254,6 @@ const formatCreatedTime = (d) => {
 
 const goToDetail = (id) => router.push(`/counselor/bullying-reports/${id}`)
 
-/* Placeholder foto — ganti dengan aset sekolah bila tersedia */
 const heroPhoto = 'https://picsum.photos/seed/sapabkpanel/1600/900.jpg'
 const currentYear = new Date().getFullYear()
 </script>
@@ -256,8 +264,6 @@ const currentYear = new Date().getFullYear()
     <!-- ============ Bar atas ============ -->
     <header class="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
       <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
-
-        <!-- Merek + identitas panel -->
         <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800 ring-1 ring-emerald-500/20">
             <img v-if="!logoFailed" src="@/assets/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
@@ -272,7 +278,6 @@ const currentYear = new Date().getFullYear()
           </div>
         </div>
 
-        <!-- Aksi akun -->
         <div class="flex shrink-0 items-center gap-2 sm:gap-3">
           <router-link
             to="/counselor/archived-reports"
@@ -320,7 +325,6 @@ const currentYear = new Date().getFullYear()
 
       <!-- ===== Hero panel BK ===== -->
       <section class="fade-up relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-        <!-- Foto latar: lingkungan sekolah, digelapkan & desaturasi -->
         <img :src="heroPhoto" alt="" aria-hidden="true" draggable="false"
              class="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-20 grayscale contrast-125 brightness-[.65]" />
         <div class="pointer-events-none absolute inset-0 bg-slate-950/60" aria-hidden="true"></div>
@@ -331,8 +335,6 @@ const currentYear = new Date().getFullYear()
 
         <div class="relative z-10 space-y-8 p-6 sm:p-8 lg:p-10">
           <div class="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-12">
-
-            <!-- Kolom kiri -->
             <div class="flex flex-col justify-center">
               <div class="flex items-center gap-2.5">
                 <span class="relative flex h-2 w-2">
@@ -353,7 +355,7 @@ const currentYear = new Date().getFullYear()
               </p>
 
               <div class="mt-6">
-                <div class="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 py-1.5 pl-3 pr-4 text-xs text-slate-300 backdrop-blur-sm">
+                <div v-if="!isLoadingStats" class="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 py-1.5 pl-3 pr-4 text-xs text-slate-300 backdrop-blur-sm">
                   <span v-if="totalPending > 0" class="relative flex h-2 w-2">
                     <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60"></span>
                     <span class="relative inline-flex h-2 w-2 rounded-full bg-amber-400"></span>
@@ -364,7 +366,6 @@ const currentYear = new Date().getFullYear()
               </div>
             </div>
 
-            <!-- Kartu petugas -->
             <aside class="rounded-xl border border-slate-800 bg-slate-950/70 p-5 backdrop-blur-sm">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Petugas Penanganan</p>
@@ -399,7 +400,6 @@ const currentYear = new Date().getFullYear()
             </aside>
           </div>
 
-          <!-- Strip kepercayaan penanganan -->
           <div class="grid grid-cols-1 gap-4 border-t border-slate-800/70 pt-5 sm:grid-cols-3 sm:gap-6">
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
@@ -450,7 +450,12 @@ const currentYear = new Date().getFullYear()
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <!-- Skeleton saat loading stats -->
+        <div v-if="isLoadingStats" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <div v-for="i in 4" :key="i" class="h-32 rounded-xl border border-slate-800 bg-slate-900 animate-pulse" />
+        </div>
+
+        <div v-else class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <article
             v-for="s in statCards"
             :key="s.label"
@@ -487,7 +492,6 @@ const currentYear = new Date().getFullYear()
       <section class="fade-up" style="animation-delay: 180ms">
         <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
 
-          <!-- Kepala seksi -->
           <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-slate-800/80 px-5 py-4 sm:px-6 sm:py-5">
             <div>
               <h2 class="text-base font-bold tracking-tight text-slate-100">Daftar Kasus Perundungan</h2>
@@ -495,7 +499,6 @@ const currentYear = new Date().getFullYear()
             </div>
           </div>
 
-          <!-- Toolbar filter -->
           <div class="space-y-4 border-b border-slate-800/80 p-4 sm:p-5">
             <div class="relative">
               <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -527,7 +530,7 @@ const currentYear = new Date().getFullYear()
                 :key="opt.value"
                 type="button"
                 :aria-pressed="selectedStatus === opt.value"
-                @click="selectedStatus = opt.value"
+                @click="selectStatus(opt.value)"
                 class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all duration-200 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
                 :class="selectedStatus === opt.value ? opt.active : pillIdle"
               >
@@ -555,7 +558,6 @@ const currentYear = new Date().getFullYear()
             </div>
           </div>
 
-          <!-- Label kolom (desktop lebar) -->
           <div class="hidden border-b border-slate-800/70 bg-slate-950/50 px-5 py-2.5 sm:px-6 xl:grid xl:grid-cols-[minmax(0,1fr)_140px_105px_100px_140px_165px] xl:gap-x-4">
             <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Kasus</p>
             <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Pelapor</p>
@@ -565,8 +567,15 @@ const currentYear = new Date().getFullYear()
             <p class="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Aksi</p>
           </div>
 
-          <!-- Baris kasus -->
-          <div v-if="reportRows.length > 0" class="divide-y divide-slate-800/70">
+          <!-- Skeleton loading list -->
+          <div v-if="isLoading" class="divide-y divide-slate-800/70">
+            <div v-for="i in 4" :key="i" class="px-5 py-4 sm:px-6">
+              <div class="h-4 w-24 rounded bg-slate-800 animate-pulse mb-2"></div>
+              <div class="h-4 w-64 rounded bg-slate-800 animate-pulse"></div>
+            </div>
+          </div>
+
+          <div v-else-if="reportRows.length > 0" class="divide-y divide-slate-800/70">
             <article
               v-for="(item, i) in reportRows"
               :key="item.id"
@@ -574,18 +583,14 @@ const currentYear = new Date().getFullYear()
               :style="{ animationDelay: (i * 60) + 'ms' }"
               @click="goToDetail(item.id)"
             >
-              <!-- Aksen channel, muncul saat hover -->
               <span class="absolute bottom-3 left-0 top-3 w-[3px] rounded-r-full bg-rose-500/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true"></span>
 
-              <!-- Kolom kasus -->
               <div class="min-w-0">
                 <span class="rounded border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-rose-400">{{ item.ticket_code }}</span>
                 <h3 class="mt-2 truncate text-sm font-semibold text-slate-100 transition-colors duration-150 group-hover:text-white">{{ item.category }}</h3>
               </div>
 
-              <!-- Meta: pelapor, status, prioritas, tanggal -->
               <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 xl:contents">
-                <!-- Pelapor -->
                 <div class="min-w-0">
                   <p class="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
                     <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -604,7 +609,6 @@ const currentYear = new Date().getFullYear()
                   </p>
                 </div>
 
-                <!-- Status -->
                 <div>
                   <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-medium" :class="item.statusBadge">
                     <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
@@ -612,7 +616,6 @@ const currentYear = new Date().getFullYear()
                   </span>
                 </div>
 
-                <!-- Prioritas -->
                 <div class="flex items-center gap-2">
                   <div class="flex items-end gap-[3px]" aria-hidden="true">
                     <span class="h-1.5 w-[3px] rounded-[1px]" :class="item.priority.level >= 1 ? item.priority.bar : 'bg-slate-700'"></span>
@@ -622,7 +625,6 @@ const currentYear = new Date().getFullYear()
                   <span class="text-[11px] font-medium" :class="item.priority.text">{{ item.priority.label }}</span>
                 </div>
 
-                <!-- Tanggal -->
                 <div class="min-w-0">
                   <p class="flex items-center gap-1.5 text-xs text-slate-400">
                     <svg class="h-3.5 w-3.5 shrink-0 text-slate-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -634,7 +636,6 @@ const currentYear = new Date().getFullYear()
                 </div>
               </div>
 
-              <!-- Aksi -->
               <div class="flex justify-end">
                 <button
                   type="button"
@@ -650,7 +651,6 @@ const currentYear = new Date().getFullYear()
             </article>
           </div>
 
-          <!-- Keadaan kosong -->
           <div v-else class="flex flex-col items-center px-6 py-16 text-center">
             <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400">
               <svg v-if="hasActiveFilters" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -679,7 +679,6 @@ const currentYear = new Date().getFullYear()
             </button>
           </div>
 
-          <!-- Kaki daftar -->
           <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 sm:px-6">
             <p class="flex items-center gap-1.5 text-[11px] text-slate-600">
               <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -693,7 +692,6 @@ const currentYear = new Date().getFullYear()
       </section>
     </main>
 
-    <!-- ============ Footer ============ -->
     <footer class="border-t border-slate-800/70">
       <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
         <p class="text-[11px] text-slate-600">© {{ currentYear }} SAPA — Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
@@ -704,48 +702,37 @@ const currentYear = new Date().getFullYear()
 </template>
 
 <style>
-/* Inter sebagai identitas tipografi (aman dihapus jika sudah dikonfigurasi di Tailwind) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
 .sapa-root {
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 </style>
 
 <style scoped>
-/* Entrance seksi: fade-up halus dengan stagger */
 .fade-up {
   opacity: 0;
   animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-/* Entrance baris: hanya opacity — interaksi hover tetap bekerja */
 .card-enter {
   opacity: 0;
   animation: card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
 @keyframes card-in {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
-/* Bar statistik tumbuh dari kiri saat mount */
 .stat-bar {
   transform-origin: left center;
   animation: grow-x 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
 }
-
 @keyframes grow-x {
   from { transform: scaleX(0); }
   to   { transform: scaleX(1); }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .fade-up,
   .card-enter,

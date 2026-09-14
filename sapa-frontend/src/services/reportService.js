@@ -18,4 +18,13 @@ export default {
     })
     return data
   },
+  async getBullyingQueue(params = {}) {
+    const { data } = await api.get('/api/counselor/bullying-queue', { params })
+    return data
+  },
+
+  async getBullyingStats() {
+    const { data } = await api.get('/api/counselor/bullying-stats')
+    return data
+  },
 }
