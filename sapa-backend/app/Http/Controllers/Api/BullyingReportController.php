@@ -7,6 +7,7 @@ use App\Http\Requests\Report\StoreBullyingReportRequest;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use App\Services\NotificationService;
+use App\Http\Resources\BullyingQueueResource;
 
 class BullyingReportController extends Controller
 {
@@ -49,7 +50,7 @@ class BullyingReportController extends Controller
 
         $reports = $query->latest()->paginate(15);
 
-        return response()->json($reports);
+        return BullyingQueueResource::collection($reports);
     }
 
     public function store(StoreBullyingReportRequest $request, NotificationService $notificationService)
