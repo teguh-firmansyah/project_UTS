@@ -98,5 +98,7 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::prefix('counselor')->middleware('permission:bullying.handle')->group(function () {
         Route::get('/bullying-queue', [BullyingReportController::class, 'queue']);
+        Route::get('/bullying-stats', [BullyingReportController::class, 'stats']);
+        Route::post('/bullying-reports/{report}/reveal-identity', [BullyingReportController::class, 'revealIdentity']);
     });
 });
