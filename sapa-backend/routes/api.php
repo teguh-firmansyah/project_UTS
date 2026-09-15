@@ -46,7 +46,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // ================= PENGADUAN FASILITAS =================
     Route::post('/facility-reports', [FacilityReportController::class, 'store']);
     Route::get('/facility-reports', [FacilityReportController::class, 'index'])
-        ->middleware('permission:facility.view_all'); // hanya staff/admin
+        ->middleware('permission:facility.view_all');
+    Route::get('/facility-reports/available-staff', [FacilityReportController::class, 'availableStaff'])->middleware('permission:report.assign');
 
     // ================= PENGADUAN BULLYING =================
     Route::post('/bullying-reports', [BullyingReportController::class, 'store']);
@@ -89,8 +90,11 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::prefix('staff')->middleware('permission:facility.manage')->group(function () {
         Route::get('/facility-queue', [FacilityReportController::class, 'queue']);
+        Route::get('/facility-stats', [FacilityReportController::class, 'stats']);
     });
 
+    Route::get('/facility-reports', [FacilityReportController::class, 'index'])->middleware('permission:facility.view_all');
+    Route::post('/facility-reports', [FacilityReportController::class, 'store']);
     /*
     |--------------------------------------------------------------------------
     | COUNSELOR (BK) ONLY ROUTES
