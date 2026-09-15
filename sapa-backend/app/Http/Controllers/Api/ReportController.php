@@ -46,4 +46,53 @@ class ReportController extends Controller
 
         return new ReportDetailResource($report);
     }
+
+    public function updateStatus(Request $request, Report $report)
+    {
+        $this->authorize('updateStatus', $report);
+
+        $validated = $request->validate([
+            'status' => 'required|in:pending,reviewing,in_progress,resolved,rejected',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $oldStatus = $report->status;
+
+        $report->update([
+            'status' => $validated['status'],
+            'resolved_at' => $validated['status'] === 'resolved' ? now() : null,
+        ]);
+
+        $report->statusLogs()->create([
+            'old_status' => $oldStatus,
+            'new_status' => $validated['status'],
+            'changed_by' => $request->user()->id,
+            'note' => $validated['note'] ?? null,
+        ]);
+
+        return response()->json([
+            'message' => 'Status laporan berhasil diperbarui.',
+            'report' => $report->fresh()->loadTypeDetail(),
+        ]);
+    }
+
+    public function assign(Request $request, Report $report)
+    {
+        $this->authorize('assign', $report);
+
+        $validated = $request->validate([
+            'assigned_to' => 'required|exists:users,id',
+        ]);
+
+        $report->update($validated);
+
+        $report->statusLogs()->create([
+            'old_status' => $report->status,
+            'new_status' => $report->status,
+            'changed_by' => $request->user()->id,
+            'note' => 'Laporan ditugaskan ke petugas.',
+        ]);
+
+        return response()->json($report->fresh()->load('assignee:id,name'));
+    }
 }
