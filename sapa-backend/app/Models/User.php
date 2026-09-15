@@ -13,21 +13,24 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable([
-    'name',
-    'email',
-    'password',
-    'identity_number',
-    'class_name',
-    'phone',
-    'avatar',
-    'is_active',
-])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasApiTokens, HasRoles;
+
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'identity_number',
+        'class_name',
+        'phone',
+        'room',   // BARU
+        'bio',    // BARU
+        'avatar',
+        'is_active',
+    ];
 
     /**
      * Get the attributes that should be cast.

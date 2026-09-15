@@ -23,15 +23,18 @@ const initialsOf = (name) => {
 /* ---------------------------------- */
 /* Data profil BK (existing)          */
 /* ---------------------------------- */
+/* ---------------------------------- */
+/* Data profil BK — sekarang dari authStore, field disesuaikan skema */
+/* ---------------------------------- */
 const profile = ref({
-  name: authStore.user?.name || 'Dra. Hj. Nurhaliza, M.Pd',
-  nip: '19780512 200501 2 004',
-  role: 'Guru Bimbingan Konseling / Konselor Utama',
-  email: authStore.user?.email || 'nurhaliza.bk@sekolah.sch.id',
-  phone: '081234567890',
-  room: 'Ruang BK Gedung Utama Fl. 2',
-  bio: 'Berfokus pada pendampingan psikologis siswa, penanganan perundungan (bullying), serta pengembangan minat & bakat siswa.',
-  avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop'
+  name: authStore.user?.name || '',
+  nip: authStore.user?.identity_number || '', // mapping identity_number -> nip di UI
+  role: 'Guru Bimbingan Konseling / Konselor Utama', // statis, tidak dari backend
+  email: authStore.user?.email || '',
+  phone: authStore.user?.phone || '',
+  room: authStore.user?.room || '',
+  bio: authStore.user?.bio || '',
+  avatar_url: authStore.user?.avatar || null,
 })
 
 /* Snapshot untuk tombol "Atur Ulang" */
@@ -131,28 +134,24 @@ const handleSaveProfile = async () => {
   showSuccessAlert.value = false
 
   try {
-    if (authStore.updateProfile) {
-      const payload = { ...profile.value }
-      if (avatarFile.value) payload.avatar = avatarFile.value
-      await authStore.updateProfile(payload)
-    } else {
-      // Simulasi request API (perilaku asli dipertahankan)
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      authStore.user = { ...(authStore.user || {}), ...profile.value }
-    }
+    const payload = { ...profile.value }
+    if (avatarFile.value) payload.avatar = avatarFile.value
+    await authStore.updateProfile(payload)
 
     showSuccessAlert.value = true
+    setTimeout(() => { showSuccessAlert.value = false }, 3000)
 
-    // Sembunyikan notifikasi setelah 3 detik (existing)
-    setTimeout(() => {
-      showSuccessAlert.value = false
-    }, 3000)
-
-    // Perbarui snapshot agar "Atur Ulang" mengembalikan data terbaru
     initialSnapshot.value = snapshotOf(profile.value)
+    avatarFile.value = null
+    avatarPreview.value = null
   } catch (error) {
-    console.error('Gagal menyimpan profil:', error)
-    toast.error('Gagal menyimpan profil. Silakan coba lagi.')
+    const validationErrors = error?.response?.data?.errors
+    if (validationErrors) {
+      profileErrors.value = Object.fromEntries(
+        Object.entries(validationErrors).map(([k, v]) => [k, v[0]])
+      )
+    }
+    toast.error(authStore.error || 'Gagal menyimpan profil. Silakan coba lagi.')
   } finally {
     isSaving.value = false
   }
@@ -237,16 +236,16 @@ const handleChangePassword = async () => {
 
   isChangingPassword.value = true
   try {
-    if (authStore.changePassword) {
-      await authStore.changePassword(passwordForm.value)
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 600))
-    }
+    await authStore.changePassword(passwordForm.value)
     toast.success('Password berhasil diubah.')
     passwordForm.value = { old_password: '', new_password: '', new_password_confirmation: '' }
     passwordErrors.value = {}
     showOldPassword.value = showNewPassword.value = showConfirmPassword.value = false
   } catch (error) {
+    const validationErrors = error?.response?.data?.errors
+    if (validationErrors?.old_password) {
+      passwordErrors.value.old_password = validationErrors.old_password[0]
+    }
     toast.error(authStore.error || 'Gagal mengubah password. Periksa kembali password saat ini.')
   } finally {
     isChangingPassword.value = false

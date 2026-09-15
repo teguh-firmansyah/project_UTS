@@ -8,6 +8,7 @@ use App\Models\Report;
 use Illuminate\Http\Request;
 use App\Services\NotificationService;
 use App\Http\Resources\BullyingQueueResource;
+use Illuminate\Support\Facades\DB;
 
 class BullyingReportController extends Controller
 {
@@ -26,21 +27,46 @@ class BullyingReportController extends Controller
         return response()->json($reports);
     }
 
+    public function show(Request $request, Report $report)
+    {
+        // Memastikan laporan yang diakses berjenis 'bullying'
+        if ($report->type !== 'bullying') {
+            return response()->json(['message' => 'Laporan bukan merupakan laporan perundungan.'], 404);
+        }
+
+        // Jalankan pemeriksaan Policy
+        $this->authorize('view', $report);
+
+        // Load relasi yang dibutuhkan untuk halaman detail counselor
+        $report->load([
+            'bullyingDetail',
+            'attachments',
+            'statusLogs.changedBy:id,name',
+            'reporter:id,name,email', // Reporter akan null jika is_anonymous = true
+        ]);
+
+        return response()->json([
+            'data' => $report
+        ]);
+    }
+
+    // BullyingReportController.php
     public function queue(Request $request)
     {
+        $this->authorize('viewAny', Report::class);
+
         $query = Report::query()
             ->ofType('bullying')
-            ->with(['bullyingDetail']);
+            ->with(['bullyingDetail.counselor:id,name', 'reporter:id,name,class_name']);
 
-        // Filter status (opsional dari query string ?status=pending)
+        // Dukung filter status tunggal ATAU multi (status[]=resolved&status[]=rejected)
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $statuses = (array) $request->status;
+            $query->whereIn('status', $statuses);
         } else {
-            // default: tampilkan yang masih aktif
             $query->whereIn('status', ['pending', 'reviewing', 'in_progress']);
         }
 
-        // Filter rentang tanggal (opsional)
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
@@ -48,7 +74,7 @@ class BullyingReportController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $reports = $query->latest()->paginate(15);
+        $reports = $query->latest()->paginate(50); // arsip biasanya butuh limit lebih besar
 
         return BullyingQueueResource::collection($reports);
     }
@@ -101,35 +127,61 @@ class BullyingReportController extends Controller
 
     public function handle(Request $request, Report $report)
     {
+        // 1. Otorisasi - pastikan user adalah BK/Counselor dan laporan berjenis 'bullying'
         $this->authorize('updateStatus', $report);
 
+        if ($report->type !== 'bullying') {
+            return response()->json([
+                'message' => 'Laporan ini bukan merupakan laporan perundungan.'
+            ], 422);
+        }
+
+        // 2. Validasi Input dari form Frontend
         $validated = $request->validate([
-            'status' => 'required|in:reviewing,in_progress,resolved,rejected',
-            'handling_notes' => 'nullable|string|max:2000',
+            'status' => 'required|string|in:reviewing,in_progress,resolved,rejected',
+            'handling_notes' => 'required|string|max:2000',
+        ], [
+            'status.required' => 'Status penanganan wajib dipilih.',
+            'status.in' => 'Status yang dipilih tidak valid.',
+            'handling_notes.required' => 'Catatan penanganan wajib diisi.',
         ]);
 
         $oldStatus = $report->status;
+        $newStatus = $validated['status'];
 
-        $report->update([
-            'status' => $validated['status'],
-            'resolved_at' => $validated['status'] === 'resolved' ? now() : null,
-        ]);
+        // 3. Eksekusi Update via DB Transaction
+        DB::transaction(function () use ($report, $oldStatus, $newStatus, $validated, $request) {
+            // Update data utama di tabel reports
+            $report->update([
+                'status' => $newStatus,
+                'resolved_at' => $newStatus === 'resolved' ? now() : null,
+            ]);
 
-        $report->bullyingDetail()->update([
-            'handled_by_counselor_id' => $request->user()->id,
-            'handling_notes' => $validated['handling_notes'] ?? null,
-        ]);
+            // Update detail khusus perundungan (handling_notes & id konselor)
+            $report->bullyingDetail()->updateOrCreate(
+                ['report_id' => $report->id],
+                [
+                    'handled_by_counselor_id' => $request->user()->id,
+                    'handling_notes' => $validated['handling_notes'],
+                ]
+            );
 
-        $report->statusLogs()->create([
-            'old_status' => $oldStatus,
-            'new_status' => $validated['status'],
-            'changed_by' => $request->user()->id,
-            'note' => 'Ditangani oleh Guru BK.',
-        ]);
+            // Catat riwayat perubahan ke tabel status_logs
+            $report->statusLogs()->create([
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'changed_by' => $request->user()->id,
+                'note' => $validated['handling_notes'],
+            ]);
+        });
 
+        // 4. Return Response JSON beserta relasi terbarunya
         return response()->json([
-            'message' => 'Status laporan berhasil diperbarui.',
-            'report' => $report->fresh()->load('bullyingDetail'),
+            'message' => 'Penanganan laporan berhasil diperbarui.',
+            'data' => $report->fresh()->load([
+                'bullyingDetail',
+                'statusLogs.changedBy:id,name',
+            ]),
         ]);
     }
 
