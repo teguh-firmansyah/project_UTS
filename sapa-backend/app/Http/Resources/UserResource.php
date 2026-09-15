@@ -16,10 +16,12 @@ class UserResource extends JsonResource
             'identity_number' => $this->identity_number,
             'class_name' => $this->class_name,
             'phone' => $this->phone,
-            'avatar' => $this->avatar,
+            'room' => $this->room,   // BARU
+            'bio' => $this->bio,     // BARU
+            'avatar' => $this->avatar ? asset('storage/' . $this->avatar) : null, // full URL
             'is_active' => $this->is_active,
-            'roles' => $this->getRoleNames(), // dari Spatie — array nama role
-            'permissions' => $this->getAllPermissions()->pluck('name'), // untuk frontend guard
+            'roles' => $this->getRoleNames(),
+            'permissions' => $this->getAllPermissions()->pluck('name'),
         ];
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BullyingReportController;
 use App\Http\Controllers\Api\ReportCommentController;
 use App\Http\Controllers\Api\ReportAttachmentController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\Admin\UserManagementController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use Illuminate\Support\Facades\Route;
@@ -76,11 +77,17 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::get('/dashboard/analytics', [DashboardController::class, 'analytics']);
+        Route::get('/reports', [DashboardController::class, 'allReports']);
         Route::get('/reports/export', [DashboardController::class, 'export']);
 
-        Route::apiResource('users', UserManagementController::class);
+        Route::get('/users', [UserManagementController::class, 'index']);
+        Route::post('/users', [UserManagementController::class, 'store']);
+        Route::get('/users/{user}', [UserManagementController::class, 'show']);
+        Route::patch('/users/{user}', [UserManagementController::class, 'update']);
+        Route::delete('/users/{user}', [UserManagementController::class, 'destroy']);
         Route::patch('/users/{user}/toggle-active', [UserManagementController::class, 'toggleActive']);
         Route::post('/users/{user}/assign-role', [UserManagementController::class, 'assignRole']);
+        Route::post('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword']);
     });
 
     /*
@@ -103,6 +110,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('counselor')->middleware('permission:bullying.handle')->group(function () {
         Route::get('/bullying-queue', [BullyingReportController::class, 'queue']);
         Route::get('/bullying-stats', [BullyingReportController::class, 'stats']);
+        Route::get('/bullying-reports/{report}', [BullyingReportController::class, 'show']);
+        Route::patch('/bullying-reports/{report}/handle', [BullyingReportController::class, 'handle']);
         Route::post('/bullying-reports/{report}/reveal-identity', [BullyingReportController::class, 'revealIdentity']);
     });
+
+    Route::patch('/profile', [ProfileController::class, 'update']);
+    Route::patch('/profile/password', [ProfileController::class, 'changePassword']);
 });
