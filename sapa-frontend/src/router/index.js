@@ -2,16 +2,18 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const routes = [
-
   // ================= PROFILE (DYNAMIC REDIRECT & ROLE BASED) =================
   {
     path: '/profile',
     name: 'profile',
-    redirect: (to) => {
+    redirect: () => {
       const authStore = useAuthStore()
       if (authStore.hasRole('counselor')) return { name: 'counselor-profile' }
       if (authStore.hasRole('student')) return { name: 'student-profile' }
-      return { name: 'student-profile' } // default fallback
+      if (authStore.hasRole('admin') || authStore.hasRole('staff')) {
+        return authStore.defaultRoute
+      }
+      return { name: 'student-profile' }
     },
     meta: { requiresAuth: true },
   },
@@ -28,7 +30,7 @@ const routes = [
     meta: { requiresAuth: true, roles: ['counselor'] },
   },
 
-  // ================= PUBLIC =================
+  // ================= PUBLIC (GUEST ONLY) =================
   {
     path: '/login',
     name: 'login',
@@ -139,27 +141,27 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
-  // Tunggu pengecekan auth awal selesai dulu (hanya sekali, saat app pertama load)
+  // 1. Inisialisasi status auth user sekali saja saat app pertama kali dibuka / di-refresh
   if (!authStore.isInitialized) {
     await authStore.fetchCurrentUser()
   }
 
-  // langsung arahkan ke dashboard sesuai role-nya, sebelum cek meta.roles
+  // 2. Proteksi Halaman Khusus Tamu (Login / Register)
+  if (to.meta.guestOnly && authStore.isAuthenticated) {
+    return authStore.defaultRoute
+  }
+
+  // 3. Redirect awal jika user Non-Student mengakses root URL ('/')
   if (to.path === '/' && authStore.isAuthenticated && !authStore.isStudent) {
     return authStore.defaultRoute
   }
 
-  // Halaman yang butuh login, tapi user belum login
+  // 4. Proteksi Halaman yang Membutuhkan Login
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
-  // Halaman khusus tamu (login/register), tapi user sudah login
-  if (to.meta.guestOnly && authStore.isAuthenticated) {
-    return { name: 'dashboard' }
-  }
-
-  // Cek role — kalau route punya batasan role dan user tidak punya salah satunya
+  // 5. Proteksi Role-based Access Control (RBAC)
   if (to.meta.roles && !to.meta.roles.some((role) => authStore.hasRole(role))) {
     return { name: 'unauthorized' }
   }
