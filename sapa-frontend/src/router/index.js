@@ -84,6 +84,26 @@ const routes = [
     component: () => import('@/views/staff/FacilityQueueView.vue'),
     meta: { requiresAuth: true, roles: ['staff'] },
   },
+  {
+    path: '/staff/facility-reports/:id',
+    name: 'staff-facility-detail',
+    component: () => import('@/views/staff/FacilityReportDetailView.vue'),
+    meta: { requiresAuth: true, roles: ['staff'] },
+    props: true,
+  },
+  {
+    path: '/staff/facility-history',
+    name: 'staff-facility-history',
+    component: () => import('@/views/staff/FacilityHistoryView.vue'),
+    meta: { requiresAuth: true, roles: ['staff'] },
+  },
+  {
+    path: '/staff/profile',
+    name: 'staff-profile',
+    component: () => import('@/views/staff/ProfileView.vue'),
+    meta: { requiresAuth: true, roles: ['staff'] },
+  },
+  
 
   // ================= COUNSELOR (BK) =================
   {
@@ -117,6 +137,12 @@ const routes = [
     path: '/admin/users',
     name: 'admin-users',
     component: () => import('@/views/admin/UserManagementView.vue'),
+    meta: { requiresAuth: true, roles: ['admin'] },
+  },
+  {
+    path: '/admin/reports',
+    name: 'admin-reports',
+    component: () => import('@/views/admin/AdminReports.vue'),
     meta: { requiresAuth: true, roles: ['admin'] },
   },
 
