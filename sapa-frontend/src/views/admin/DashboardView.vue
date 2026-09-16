@@ -4,6 +4,28 @@ import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
 
+/* ---------- Import Lucide Icons ---------- */
+import {
+  BarChart3,
+  FileText,
+  Users,
+  LogOut,
+  ArrowRight,
+  ShieldCheck,
+  Lock,
+  FileCheck,
+  KeyRound,
+  CheckCircle2,
+  Clock,
+  RefreshCw,
+  Heart,
+  ChevronRight,
+  Activity,
+  Settings,
+  AlertCircle
+
+} from 'lucide-vue-next'
+
 import {
   Chart as ChartJS,
   Title,
@@ -47,17 +69,23 @@ const navItems = [
   {
     label: 'Analitik',
     to: '/admin/dashboard',
-    icon: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z',
+    icon: BarChart3,
   },
   {
     label: 'Semua Laporan',
     to: '/admin/reports',
-    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    icon: FileText,
   },
   {
     label: 'Manajemen User',
     to: '/admin/users',
-    icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+    icon: Users,
+  },
+  
+  { 
+    label: 'Pengaturan', 
+    to: '/admin/settings', 
+    icon: Settings
   },
 ]
 
@@ -88,7 +116,7 @@ const statCards = computed(() => {
       badgeClass: 'border-slate-700/50 bg-slate-800/80 text-slate-300',
       caption: 'Seluruh laporan terdaftar lintas sistem',
       pct: 100,
-      icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      icon: FileText,
       num: 'text-white',
       tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
       bar: 'bg-emerald-500',
@@ -100,7 +128,7 @@ const statCards = computed(() => {
       badgeClass: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
       caption: `${resolvedCount} dari ${s.totalReports} laporan tuntas`,
       pct: s.resolvedRate,
-      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: CheckCircle2,
       num: 'text-emerald-400',
       tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
       bar: 'bg-emerald-500',
@@ -112,7 +140,7 @@ const statCards = computed(() => {
       badgeClass: 'border-slate-700/50 bg-slate-800/80 text-slate-400',
       caption: 'Target internal: maks. 2 hari per laporan',
       pct: Math.round((s.avgResolutionDays / 2) * 100),
-      icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: Clock,
       num: 'text-white',
       tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300',
       bar: 'bg-slate-500',
@@ -124,7 +152,7 @@ const statCards = computed(() => {
       badgeClass: 'border-amber-500/20 bg-amber-500/10 text-amber-400',
       caption: `${pendingPct}% dari total laporan aktif`,
       pct: pendingPct,
-      icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+      icon: RefreshCw,
       num: 'text-amber-400',
       tile: 'border-amber-500/25 bg-amber-500/10 text-amber-400',
       bar: 'bg-amber-500',
@@ -297,7 +325,7 @@ const currentYear = new Date().getFullYear()
 </script>
 
 <template>
-  <div class="sapa-root flex min-h-screen flex-col bg-slate-950 font-sans text-slate-100 antialiased selection:bg-emerald-500/25">
+  <div class="sapa-root flex min-h-screen flex-col bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500/25">
 
     <!-- ============ Bar atas ============ -->
     <header class="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
@@ -307,7 +335,7 @@ const currentYear = new Date().getFullYear()
           <!-- Merek -->
           <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800 ring-1 ring-emerald-500/20">
-              <img v-if="!logoFailed" src="@/assets/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
+              <img v-if="!logoFailed" src="@/assets/logo/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
               <span v-else class="text-sm font-extrabold text-emerald-400">S</span>
             </div>
             <div class="min-w-0">
@@ -319,7 +347,7 @@ const currentYear = new Date().getFullYear()
             </div>
           </div>
 
-          <!-- Navigasi: sejajar di desktop, baris dapat digulir di mobile -->
+          <!-- Navigasi -->
           <nav class="no-scrollbar order-3 -mx-1 flex w-full items-center gap-1 overflow-x-auto pb-1 md:order-2 md:mx-0 md:w-auto md:border-l md:border-slate-800/80 md:pb-0 md:pl-6" aria-label="Navigasi utama">
             <router-link
               v-for="item in navItems"
@@ -331,9 +359,7 @@ const currentYear = new Date().getFullYear()
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                 : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'"
             >
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
-              </svg>
+              <component :is="item.icon" class="h-4 w-4" />
               <span>{{ item.label }}</span>
             </router-link>
           </nav>
@@ -345,9 +371,7 @@ const currentYear = new Date().getFullYear()
             title="Keluar dari akun"
             class="order-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/80 text-slate-500 transition-all duration-200 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 md:order-3"
           >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut class="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -393,9 +417,7 @@ const currentYear = new Date().getFullYear()
                   class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 >
                   <span>Kelola Laporan</span>
-                  <svg class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
+                  <ArrowRight class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
                 </router-link>
 
                 <div class="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 py-1.5 pl-3 pr-4 text-xs text-slate-300 backdrop-blur-sm">
@@ -410,9 +432,7 @@ const currentYear = new Date().getFullYear()
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Administrator</p>
                 <span class="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
-                  </svg>
+                  <CheckCircle2 class="h-3 w-3" />
                   Terverifikasi
                 </span>
               </div>
@@ -439,9 +459,7 @@ const currentYear = new Date().getFullYear()
                     Operasional
                   </p>
                 </div>
-                <svg class="h-5 w-5 shrink-0 text-slate-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
+                <Activity class="h-5 w-5 shrink-0 text-slate-600" />
               </div>
             </aside>
           </div>
@@ -449,10 +467,8 @@ const currentYear = new Date().getFullYear()
           <!-- Strip kepercayaan -->
           <div class="grid grid-cols-1 gap-4 border-t border-slate-800/70 pt-5 sm:grid-cols-3 sm:gap-6">
             <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60 text-emerald-400">
+                <Lock class="h-4 w-4" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Privasi Terjaga</p>
@@ -461,10 +477,8 @@ const currentYear = new Date().getFullYear()
             </div>
 
             <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60 text-emerald-400">
+                <FileCheck class="h-4 w-4" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Audit Transparan</p>
@@ -473,10 +487,8 @@ const currentYear = new Date().getFullYear()
             </div>
 
             <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-                </svg>
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60 text-emerald-400">
+                <KeyRound class="h-4 w-4" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Akses Berjenjang</p>
@@ -509,9 +521,7 @@ const currentYear = new Date().getFullYear()
                 <p class="mt-2.5 text-3xl font-extrabold tracking-tight tabular-nums" :class="s.num">{{ s.value }}</p>
               </div>
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-transform duration-200 group-hover:scale-110" :class="s.tile">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="s.icon" />
-                </svg>
+                <component :is="s.icon" class="h-5 w-5" />
               </div>
             </div>
             <div class="mt-4 flex items-center justify-between gap-3">
@@ -566,15 +576,13 @@ const currentYear = new Date().getFullYear()
               </div>
             </div>
 
-            <!-- Legenda kustom dengan nilai -->
+            <!-- Legenda kustom -->
             <div class="mt-5 space-y-2.5 border-t border-slate-800/60 pt-4">
               <div v-for="l in distributionLegend" :key="l.label" class="flex items-center justify-between gap-3 text-xs">
                 <span class="flex min-w-0 items-center gap-2">
                   <span class="h-2 w-2 shrink-0 rounded-full" :class="l.dot" aria-hidden="true"></span>
                   <span class="truncate text-slate-300">{{ l.label }}</span>
-                  <svg v-if="l.locked" class="h-3 w-3 shrink-0 text-amber-400/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                  <Lock v-if="l.locked" class="h-3 w-3 shrink-0 text-amber-400/70" />
                 </span>
                 <span class="shrink-0 font-semibold tabular-nums text-slate-400">
                   {{ l.value }} <span class="font-normal text-slate-600">·</span> <span class="font-normal text-slate-500">{{ l.pct }}%</span>
@@ -599,9 +607,7 @@ const currentYear = new Date().getFullYear()
               <h3 class="truncate text-sm font-bold tracking-tight text-slate-100">Statistik Agregat Bullying</h3>
             </div>
             <span class="inline-flex shrink-0 items-center gap-1 rounded border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400">
-              <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+              <Lock class="h-3 w-3" />
               BK Exclusive
             </span>
           </div>
@@ -631,9 +637,7 @@ const currentYear = new Date().getFullYear()
           </div>
 
           <p class="mt-5 flex items-start gap-1.5 border-t border-amber-500/20 pt-3.5 text-[11px] leading-relaxed text-slate-500">
-            <svg class="mt-px h-3.5 w-3.5 shrink-0 text-amber-400/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+            <Lock class="mt-px h-3.5 w-3.5 shrink-0 text-amber-400/70" />
             Narasi lengkap, identitas pelapor &amp; korban tidak ditampilkan pada panel admin.
           </p>
         </div>
@@ -650,9 +654,7 @@ const currentYear = new Date().getFullYear()
               class="group inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-all duration-200 hover:bg-emerald-500 hover:text-slate-950 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
             >
               <span>Lihat Semua</span>
-              <svg class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
+              <ChevronRight class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
             </router-link>
           </div>
 
@@ -667,9 +669,7 @@ const currentYear = new Date().getFullYear()
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="rounded border border-slate-700/60 bg-slate-800/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-300">{{ act.code }}</span>
                   <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold" :class="typeMeta[act.type]">
-                    <svg v-if="act.type === 'Perundungan'" class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+                    <Lock v-if="act.type === 'Perundungan'" class="h-2.5 w-2.5" />
                     {{ act.type }}
                   </span>
                 </div>
@@ -681,9 +681,7 @@ const currentYear = new Date().getFullYear()
 
           <p class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 text-[11px] text-slate-600 sm:px-6">
             <span class="flex items-center gap-1.5">
-              <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+              <ShieldCheck class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
               Seluruh aksi admin tercatat pada jejak audit sistem
             </span>
             <span class="whitespace-nowrap">{{ recentActivities.length }} aktivitas terbaru</span>
@@ -697,9 +695,7 @@ const currentYear = new Date().getFullYear()
       <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
         <p class="text-[11px] text-slate-600">© {{ currentYear }} SAPA — Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
         <p class="flex items-center gap-1.5 text-[11px] text-slate-600">
-          <svg class="h-3.5 w-3.5 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
+          <Lock class="h-3.5 w-3.5 text-emerald-500/70" />
           Data perundungan hanya dapat diakses oleh Guru BK berwenang
         </p>
       </div>
