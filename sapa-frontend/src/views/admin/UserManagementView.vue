@@ -1,429 +1,3 @@
-<script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { toast } from 'vue-sonner'
-import { useAuthStore } from '@/stores/auth'
-
-const router = useRouter()
-const route = useRoute()
-const authStore = useAuthStore()
-
-const logoFailed = ref(false)
-
-/* ---------------------------------- */
-/* Navigasi panel (aktif via route)   */
-/* ---------------------------------- */
-const navItems = [
-  {
-    label: 'Analitik',
-    to: '/admin/dashboard',
-    icon: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z',
-  },
-  {
-    label: 'Semua Laporan',
-    to: '/admin/reports',
-    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-  },
-  {
-    label: 'Manajemen User',
-    to: '/admin/users',
-    icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
-  },
-]
-
-const isActive = (item) => route.path === item.to || route.path.startsWith(item.to + '/')
-
-/* ---------------------------------- */
-/* State filter & paginasi (existing) */
-/* ---------------------------------- */
-const searchQuery = ref('')
-const selectedRole = ref('all')
-const selectedStatus = ref('all')
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-/* ---------------------------------- */
-/* State modal (existing)             */
-/* ---------------------------------- */
-const showUserModal = ref(false)
-const showResetModal = ref(false)
-const showDeleteModal = ref(false)
-const isEditing = ref(false)
-const selectedUser = ref(null)
-
-const userForm = ref({
-  id: null,
-  name: '',
-  email: '',
-  nip_nisn: '',
-  role: 'Siswa',
-  status: 'Aktif'
-})
-
-const userErrors = ref({})
-
-/* ---------------------------------- */
-/* Data pengguna (existing, verbatim) */
-/* ---------------------------------- */
-const users = ref([
-  {
-    id: 1,
-    name: 'Ahmad Rizky',
-    email: 'ahmad.rizky@sekolah.sch.id',
-    nip_nisn: '0051234567',
-    role: 'Siswa',
-    status: 'Aktif',
-    last_login: '15 Sep 2026, 08:30'
-  },
-  {
-    id: 2,
-    name: 'Dra. Endang Lestari',
-    email: 'endang.bk@sekolah.sch.id',
-    nip_nisn: '197803122005012001',
-    role: 'Guru BK',
-    status: 'Aktif',
-    last_login: '14 Sep 2026, 14:15'
-  },
-  {
-    id: 3,
-    name: 'Bambang Subagyo, S.Pd',
-    email: 'bambang.sarpras@sekolah.sch.id',
-    nip_nisn: '198205142008021003',
-    role: 'Guru',
-    status: 'Aktif',
-    last_login: '12 Sep 2026, 10:00'
-  },
-  {
-    id: 4,
-    name: 'Admin Utama SAPA',
-    email: 'admin.sapa@sekolah.sch.id',
-    nip_nisn: '199001012015031001',
-    role: 'Admin',
-    status: 'Aktif',
-    last_login: '15 Sep 2026, 14:00'
-  },
-  {
-    id: 5,
-    name: 'Siti Aminah',
-    email: 'siti.aminah@sekolah.sch.id',
-    nip_nisn: '0057654321',
-    role: 'Siswa',
-    status: 'Nonaktif',
-    last_login: '01 Agu 2026, 09:20'
-  }
-])
-
-/* ---------------------------------- */
-/* Metrik (computed existing, kini    */
-/* dengan resep kartu sistem)         */
-/* ---------------------------------- */
-const totalUsers = computed(() => users.value.length)
-const activeUsers = computed(() => users.value.filter(u => u.status === 'Aktif').length)
-const totalAdmins = computed(() => users.value.filter(u => u.role === 'Admin').length)
-const totalTeachers = computed(() => users.value.filter(u => u.role === 'Guru' || u.role === 'Guru BK').length)
-
-const statCards = computed(() => {
-  const pct = (n) => (totalUsers.value > 0 ? Math.round((n / totalUsers.value) * 100) : 0)
-  return [
-    {
-      label: 'Total Pengguna',
-      value: totalUsers.value,
-      caption: 'Seluruh akun terdaftar pada sistem',
-      pct: 100,
-      icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
-      num: 'text-white',
-      tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
-      bar: 'bg-emerald-500',
-    },
-    {
-      label: 'Akun Aktif',
-      value: activeUsers.value,
-      caption: `${pct(activeUsers.value)}% dari total pengguna`,
-      pct: pct(activeUsers.value),
-      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-      num: 'text-emerald-400',
-      tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
-      bar: 'bg-emerald-500',
-    },
-    {
-      label: 'Tenaga Pendidik',
-      value: totalTeachers.value,
-      caption: 'Guru, Guru BK & petugas sarpras',
-      pct: pct(totalTeachers.value),
-      icon: 'M12 14l9-5-9-5-9 5 9 5z',
-      num: 'text-cyan-400',
-      tile: 'border-cyan-500/25 bg-cyan-500/10 text-cyan-400',
-      bar: 'bg-cyan-500',
-    },
-    {
-      label: 'Administrator',
-      value: totalAdmins.value,
-      caption: 'Akses penuh sistem & analitik',
-      pct: pct(totalAdmins.value),
-      icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-      num: 'text-blue-400',
-      tile: 'border-blue-500/25 bg-blue-500/10 text-blue-400',
-      bar: 'bg-blue-500',
-    },
-  ]
-})
-
-/* ---------------------------------- */
-/* Filter (logika existing)           */
-/* ---------------------------------- */
-const filteredUsers = computed(() => {
-  return users.value.filter(u => {
-    const matchSearch = u.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                        u.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                        u.nip_nisn.includes(searchQuery.value)
-    const matchRole = selectedRole.value === 'all' || u.role === selectedRole.value
-    const matchStatus = selectedStatus.value === 'all' || u.status === selectedStatus.value
-
-    return matchSearch && matchRole && matchStatus
-  })
-})
-
-const hasActiveFilters = computed(() =>
-  searchQuery.value.trim() !== '' || selectedRole.value !== 'all' || selectedStatus.value !== 'all'
-)
-
-const clearFilters = () => {
-  searchQuery.value = ''
-  selectedRole.value = 'all'
-  selectedStatus.value = 'all'
-}
-
-/* ---------------------------------- */
-/* Paginasi (logika existing +        */
-/* reset halaman saat filter berubah) */
-/* ---------------------------------- */
-const totalPages = computed(() => Math.ceil(filteredUsers.value.length / itemsPerPage.value) || 1)
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return filteredUsers.value.slice(start, start + itemsPerPage.value)
-})
-
-watch([searchQuery, selectedRole, selectedStatus], () => {
-  currentPage.value = 1
-})
-
-watch(totalPages, (tp) => {
-  if (currentPage.value > tp) currentPage.value = tp
-})
-
-const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
-const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
-
-/* ---------------------------------- */
-/* Helper (existing + peran sistem)   */
-/* ---------------------------------- */
-const getInitials = (name) => {
-  if (!name) return '?'
-  return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
-}
-
-/* Warna peran diselaraskan dengan chip panel: Siswa=emerald, Guru=cyan, BK=rose, Admin=blue */
-const getRoleBadgeClass = (role) => {
-  switch (role) {
-    case 'Admin': return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-    case 'Guru BK': return 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-    case 'Guru': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-    case 'Siswa': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-    default: return 'bg-slate-800 text-slate-300 border-slate-700'
-  }
-}
-
-const getRoleAvatarClass = (role) => {
-  switch (role) {
-    case 'Admin': return 'border-blue-500/30 bg-blue-500/10 text-blue-400'
-    case 'Guru BK': return 'border-rose-500/30 bg-rose-500/10 text-rose-400'
-    case 'Guru': return 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400'
-    case 'Siswa': return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-    default: return 'border-slate-700 bg-slate-800 text-slate-300'
-  }
-}
-
-/* Opsi peran — kartu radio (nilai identik dengan select asli) */
-const roleOptions = [
-  { value: 'Siswa', label: 'Siswa', desc: 'Mengirim laporan & aspirasi', dot: 'bg-emerald-400', active: 'border-emerald-500/50 bg-emerald-500/[0.06] text-emerald-400' },
-  { value: 'Guru', label: 'Guru (Sarpras)', desc: 'Menangani laporan fasilitas', dot: 'bg-cyan-400', active: 'border-cyan-500/50 bg-cyan-500/[0.06] text-cyan-400' },
-  { value: 'Guru BK', label: 'Guru BK', desc: 'Menangani kasus perundungan', dot: 'bg-rose-400', active: 'border-rose-500/50 bg-rose-500/[0.06] text-rose-400' },
-  { value: 'Admin', label: 'Admin', desc: 'Akses penuh sistem & analitik', dot: 'bg-blue-400', active: 'border-blue-500/50 bg-blue-500/[0.06] text-blue-400' },
-]
-
-/* Pil status + hitungan */
-const statusPills = [
-  { value: 'all', label: 'Semua', active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
-  { value: 'Aktif', label: 'Aktif', active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
-  { value: 'Nonaktif', label: 'Nonaktif', active: 'border-slate-600 bg-slate-700/40 text-slate-200' },
-]
-
-const pillIdle = 'border-slate-800 bg-slate-950/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
-
-const statusCounts = computed(() => {
-  const counts = { all: users.value.length }
-  for (const u of users.value) counts[u.status] = (counts[u.status] || 0) + 1
-  return counts
-})
-
-/* Baris siap-render */
-const tableRows = computed(() =>
-  paginatedUsers.value.map(u => ({
-    ...u,
-    roleBadge: getRoleBadgeClass(u.role),
-    avatarClass: getRoleAvatarClass(u.role),
-    isActive: u.status === 'Aktif',
-  }))
-)
-
-/* ---------------------------------- */
-/* Handler modal (existing)           */
-/* ---------------------------------- */
-const openCreateModal = () => {
-  isEditing.value = false
-  userForm.value = { id: null, name: '', email: '', nip_nisn: '', role: 'Siswa', status: 'Aktif' }
-  userErrors.value = {}
-  showUserModal.value = true
-}
-
-const openEditModal = (user) => {
-  isEditing.value = true
-  userForm.value = { ...user }
-  userErrors.value = {}
-  showUserModal.value = true
-}
-
-const openResetPasswordModal = (user) => {
-  selectedUser.value = user
-  showResetModal.value = true
-}
-
-const openDeleteModal = (user) => {
-  selectedUser.value = user
-  showDeleteModal.value = true
-}
-
-/* ---------------------------------- */
-/* Validasi formulir                  */
-/* ---------------------------------- */
-const validateUserForm = () => {
-  const e = {}
-  const f = userForm.value
-
-  if (!f.name.trim()) e.name = 'Nama wajib diisi'
-  else if (f.name.trim().length < 3) e.name = 'Nama minimal 3 karakter'
-
-  if (!f.email.trim()) e.email = 'Email wajib diisi'
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = 'Format email tidak valid'
-
-  if (!f.nip_nisn.trim()) e.nip_nisn = 'NIP / NISN wajib diisi'
-
-  return e
-}
-
-watch(
-  () => [userForm.value.name, userForm.value.email, userForm.value.nip_nisn],
-  () => {
-    for (const key of ['name', 'email', 'nip_nisn']) {
-      if (userErrors.value[key]) userErrors.value[key] = ''
-    }
-  }
-)
-
-/* ---------------------------------- */
-/* Simpan user (behavior existing +   */
-/* validasi & toast)                  */
-/* ---------------------------------- */
-const handleSaveUser = () => {
-  userErrors.value = validateUserForm()
-  if (Object.keys(userErrors.value).length > 0) {
-    toast.error('Mohon lengkapi data pengguna yang belum valid.')
-    return
-  }
-
-  if (isEditing.value) {
-    const idx = users.value.findIndex(u => u.id === userForm.value.id)
-    if (idx !== -1) {
-      users.value[idx] = { ...userForm.value }
-    }
-    toast.success('Data pengguna berhasil diperbarui.', {
-      description: `${userForm.value.name} · peran ${userForm.value.role}.`
-    })
-  } else {
-    users.value.unshift({
-      ...userForm.value,
-      id: Date.now(),
-      last_login: 'Belum Pernah'
-    })
-    toast.success('Pengguna baru berhasil ditambahkan.', {
-      description: `${userForm.value.name} · peran ${userForm.value.role}.`
-    })
-  }
-  showUserModal.value = false
-}
-
-/* Hapus user (behavior existing + toast) */
-const handleDeleteUser = () => {
-  if (selectedUser.value) {
-    const name = selectedUser.value.name
-    users.value = users.value.filter(u => u.id !== selectedUser.value.id)
-    toast.success(`Akun "${name}" telah dihapus dari sistem.`)
-  }
-  showDeleteModal.value = false
-}
-
-/* Reset password (tutup modal asli + toast) */
-const handleConfirmReset = () => {
-  if (selectedUser.value) {
-    toast.success('Kata sandi berhasil direset ke default.', {
-      description: `${selectedUser.value.name} wajib mengganti kata sandi setelah login.`
-    })
-  }
-  showResetModal.value = false
-}
-
-/* Toggle status (behavior existing + toast) */
-const toggleUserStatus = (user) => {
-  user.status = user.status === 'Aktif' ? 'Nonaktif' : 'Aktif'
-  toast.success(user.status === 'Aktif' ? `Akun ${user.name} diaktifkan.` : `Akun ${user.name} dinonaktifkan.`)
-}
-
-/* ---------------------------------- */
-/* Modal: escape + kunci scroll body  */
-/* ---------------------------------- */
-const anyModalOpen = computed(() => showUserModal.value || showResetModal.value || showDeleteModal.value)
-
-const handleEscKey = (e) => {
-  if (e.key !== 'Escape') return
-  if (showUserModal.value) showUserModal.value = false
-  else if (showResetModal.value) showResetModal.value = false
-  else if (showDeleteModal.value) showDeleteModal.value = false
-}
-
-watch(anyModalOpen, (open) => {
-  document.body.style.overflow = open ? 'hidden' : ''
-})
-
-onMounted(() => window.addEventListener('keydown', handleEscKey))
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleEscKey)
-  document.body.style.overflow = ''
-})
-
-/* ---------------------------------- */
-/* Logout (behavior existing)         */
-/* ---------------------------------- */
-const handleLogout = async () => {
-  if (authStore?.logout) {
-    await authStore.logout()
-  }
-  toast.success('Berhasil keluar dari sistem.')
-  router.push({ name: 'login' })
-}
-
-const currentYear = new Date().getFullYear()
-</script>
-
 <template>
   <div class="sapa-root flex min-h-screen flex-col bg-slate-950 font-sans text-slate-100 antialiased selection:bg-emerald-500/25">
 
@@ -435,7 +9,7 @@ const currentYear = new Date().getFullYear()
           <!-- Merek -->
           <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800 ring-1 ring-emerald-500/20">
-              <img v-if="!logoFailed" src="@/assets/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
+              <img v-if="!logoFailed" src="@/assets/logo/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
               <span v-else class="text-sm font-extrabold text-emerald-400">S</span>
             </div>
             <div class="min-w-0">
@@ -459,9 +33,7 @@ const currentYear = new Date().getFullYear()
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                 : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'"
             >
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
-              </svg>
+              <component :is="item.icon" class="h-3.5 w-3.5" />
               <span>{{ item.label }}</span>
             </router-link>
           </nav>
@@ -473,9 +45,7 @@ const currentYear = new Date().getFullYear()
             title="Keluar dari akun"
             class="order-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/80 text-slate-500 transition-all duration-200 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 md:order-3"
           >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut class="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -501,9 +71,7 @@ const currentYear = new Date().getFullYear()
             @click="openCreateModal"
             class="group inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
           >
-            <svg class="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus class="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
             <span>Tambah User Baru</span>
           </button>
         </div>
@@ -531,9 +99,7 @@ const currentYear = new Date().getFullYear()
                 <p class="mt-2 text-3xl font-extrabold tracking-tight tabular-nums" :class="s.num">{{ s.value }}</p>
               </div>
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-transform duration-200 group-hover:scale-110" :class="s.tile">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="s.icon" />
-                </svg>
+                <component :is="s.icon" class="h-5 w-5" />
               </div>
             </div>
             <div class="mt-4">
@@ -566,9 +132,7 @@ const currentYear = new Date().getFullYear()
           <div class="flex flex-col gap-3 sm:flex-row">
             <!-- Pencarian -->
             <div class="relative flex-1">
-              <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-              </svg>
+              <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 v-model="searchQuery"
                 type="text"
@@ -583,17 +147,13 @@ const currentYear = new Date().getFullYear()
                 aria-label="Bersihkan pencarian"
                 class="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition-colors duration-150 hover:bg-slate-800 hover:text-slate-200"
               >
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X class="h-3.5 w-3.5" />
               </button>
             </div>
 
             <!-- Filter peran -->
             <div class="relative w-full sm:w-56">
-              <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
+              <Users class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <select
                 v-model="selectedRole"
                 aria-label="Filter peran"
@@ -605,9 +165,7 @@ const currentYear = new Date().getFullYear()
                 <option value="Guru BK">Guru BK</option>
                 <option value="Admin">Admin</option>
               </select>
-              <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             </div>
           </div>
 
@@ -638,9 +196,7 @@ const currentYear = new Date().getFullYear()
                 class="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-400 transition-all duration-150 hover:border-emerald-500/40 hover:text-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
               >
                 Atur ulang
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X class="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -664,10 +220,8 @@ const currentYear = new Date().getFullYear()
             class="card-enter group relative flex flex-col gap-3 px-5 py-4 transition-colors duration-150 hover:bg-slate-800/40 sm:px-6 xl:grid xl:grid-cols-[minmax(0,1.5fr)_140px_100px_105px_150px_160px] xl:items-center xl:gap-x-4"
             :style="{ animationDelay: (i * 60) + 'ms' }"
           >
-            <!-- Aksen emerald saat hover -->
             <span class="absolute bottom-3 left-0 top-3 w-[3px] rounded-r-full bg-emerald-500/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true"></span>
 
-            <!-- Kolom pengguna -->
             <div class="flex min-w-0 items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold transition-colors duration-150" :class="user.avatarClass">
                 {{ getInitials(user.name) }}
@@ -678,14 +232,11 @@ const currentYear = new Date().getFullYear()
               </div>
             </div>
 
-            <!-- Meta: NIP, peran, status, aktivitas -->
             <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 xl:contents">
-              <!-- NIP / NISN -->
               <div class="min-w-0">
                 <p class="truncate font-mono text-xs text-slate-400">{{ user.nip_nisn || '—' }}</p>
               </div>
 
-              <!-- Peran -->
               <div>
                 <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider" :class="user.roleBadge">
                   <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
@@ -693,7 +244,6 @@ const currentYear = new Date().getFullYear()
                 </span>
               </div>
 
-              <!-- Status -->
               <div>
                 <span
                   class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
@@ -708,7 +258,6 @@ const currentYear = new Date().getFullYear()
                 </span>
               </div>
 
-              <!-- Terakhir aktif -->
               <div class="min-w-0">
                 <p class="truncate font-mono text-[11px] text-slate-400">{{ user.last_login }}</p>
               </div>
@@ -723,9 +272,7 @@ const currentYear = new Date().getFullYear()
                 aria-label="Edit pengguna"
                 class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/60 text-slate-400 transition-all duration-150 hover:border-slate-600 hover:text-white active:scale-[.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               >
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                </svg>
+                <Pencil class="h-3.5 w-3.5" />
               </button>
 
               <button
@@ -735,9 +282,7 @@ const currentYear = new Date().getFullYear()
                 aria-label="Reset kata sandi"
                 class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/60 text-slate-400 transition-all duration-150 hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-400 active:scale-[.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
               >
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-                </svg>
+                <KeyRound class="h-3.5 w-3.5" />
               </button>
 
               <button
@@ -750,12 +295,8 @@ const currentYear = new Date().getFullYear()
                   ? 'hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 focus-visible:ring-rose-400/60'
                   : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-400 focus-visible:ring-emerald-400/60'"
               >
-                <svg v-if="user.isActive" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-                <svg v-else class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <Ban v-if="user.isActive" class="h-3.5 w-3.5" />
+                <CheckCircle2 v-else class="h-3.5 w-3.5" />
               </button>
 
               <button
@@ -765,9 +306,7 @@ const currentYear = new Date().getFullYear()
                 aria-label="Hapus pengguna"
                 class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/60 text-slate-400 transition-all duration-150 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 active:scale-[.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
               >
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                </svg>
+                <Trash2 class="h-3.5 w-3.5" />
               </button>
             </div>
           </article>
@@ -776,12 +315,8 @@ const currentYear = new Date().getFullYear()
         <!-- Keadaan kosong -->
         <div v-else class="flex flex-col items-center px-6 py-16 text-center">
           <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400">
-            <svg v-if="hasActiveFilters" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-            </svg>
-            <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-            </svg>
+            <Search v-if="hasActiveFilters" class="h-6 w-6" />
+            <UserX v-else class="h-6 w-6" />
           </div>
           <p class="mt-4 text-sm font-semibold text-slate-200">
             {{ hasActiveFilters ? 'Pengguna tidak ditemukan' : 'Belum ada pengguna terdaftar' }}
@@ -806,9 +341,7 @@ const currentYear = new Date().getFullYear()
             @click="openCreateModal"
             class="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97]"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus class="h-4 w-4" />
             Tambah Pengguna Pertama
           </button>
         </div>
@@ -832,9 +365,7 @@ const currentYear = new Date().getFullYear()
               :disabled="currentPage === 1"
               class="group inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-all duration-150 hover:border-slate-700 hover:text-white active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
             >
-              <svg class="h-3.5 w-3.5 transition-transform duration-150 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
+              <ChevronLeft class="h-3.5 w-3.5 transition-transform duration-150 group-hover:-translate-x-0.5" />
               Sebelumnya
             </button>
 
@@ -849,9 +380,7 @@ const currentYear = new Date().getFullYear()
               class="group inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-all duration-150 hover:border-slate-700 hover:text-white active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
             >
               Selanjutnya
-              <svg class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
+              <ChevronRight class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
             </button>
           </div>
         </div>
@@ -863,9 +392,7 @@ const currentYear = new Date().getFullYear()
       <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
         <p class="text-[11px] text-slate-600">© {{ currentYear }} SAPA — Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
         <p class="flex items-center gap-1.5 text-[11px] text-slate-600">
-          <svg class="h-3.5 w-3.5 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
+          <Lock class="h-3.5 w-3.5 text-emerald-500/70" />
           Perubahan hak akses pengguna tercatat pada jejak audit sistem
         </p>
       </div>
@@ -896,9 +423,7 @@ const currentYear = new Date().getFullYear()
             aria-label="Tutup"
             class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors duration-200 hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X class="h-4 w-4" />
           </button>
         </div>
 
@@ -909,9 +434,7 @@ const currentYear = new Date().getFullYear()
           <div>
             <label for="uf-name" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Nama Lengkap</label>
             <div class="relative">
-              <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+              <User class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 id="uf-name"
                 v-model="userForm.name"
@@ -924,7 +447,7 @@ const currentYear = new Date().getFullYear()
               />
             </div>
             <p v-if="userErrors.name" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-              <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+              <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
               {{ userErrors.name }}
             </p>
           </div>
@@ -933,9 +456,7 @@ const currentYear = new Date().getFullYear()
           <div>
             <label for="uf-email" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Alamat Email</label>
             <div class="relative">
-              <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+              <Mail class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 id="uf-email"
                 v-model="userForm.email"
@@ -948,7 +469,7 @@ const currentYear = new Date().getFullYear()
               />
             </div>
             <p v-if="userErrors.email" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-              <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+              <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
               {{ userErrors.email }}
             </p>
           </div>
@@ -957,9 +478,7 @@ const currentYear = new Date().getFullYear()
           <div>
             <label for="uf-nip" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">NIP / NISN</label>
             <div class="relative">
-              <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0h4m-6 6h2m-2 4h2m4-4h2m-2 4h2" />
-              </svg>
+              <IdCard class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 id="uf-nip"
                 v-model="userForm.nip_nisn"
@@ -967,12 +486,12 @@ const currentYear = new Date().getFullYear()
                 autocomplete="off"
                 placeholder="Masukkan NIP atau NISN"
                 :aria-invalid="!!userErrors.nip_nisn || undefined"
-                class="w-full rounded-lg border bg-slate-950/60 py-2.5 pl-9 pr-3 font-mono text-sm text-slate-100 placeholder-slate-600 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+                class="w-full rounded-lg border bg-slate-950/60 py-2.5 pl-10 pr-3 font-mono text-sm text-slate-100 placeholder-slate-600 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
                 :class="userErrors.nip_nisn ? 'border-red-400/60' : 'border-slate-800'"
               />
             </div>
             <p v-if="userErrors.nip_nisn" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-              <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+              <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
               {{ userErrors.nip_nisn }}
             </p>
           </div>
@@ -995,9 +514,7 @@ const currentYear = new Date().getFullYear()
                   <span class="block text-xs font-semibold text-slate-100">{{ opt.label }}</span>
                   <span class="block text-[10px] leading-snug text-slate-500">{{ opt.desc }}</span>
                 </span>
-                <svg v-if="userForm.role === opt.value" class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+                <Check v-if="userForm.role === opt.value" class="h-3.5 w-3.5 shrink-0 text-emerald-400" />
               </button>
             </div>
           </div>
@@ -1031,9 +548,7 @@ const currentYear = new Date().getFullYear()
 
           <!-- Catatan hak akses -->
           <p class="flex items-start gap-1.5 text-[10px] leading-relaxed text-slate-500">
-            <svg class="mt-px h-3 w-3 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+            <Lock class="mt-px h-3 w-3 shrink-0 text-emerald-500/70" />
             Perubahan peran langsung memengaruhi hak akses kanal — Guru BK dapat mengakses data perundungan rahasia.
           </p>
         </form>
@@ -1053,9 +568,7 @@ const currentYear = new Date().getFullYear()
               @click="handleSaveUser"
               class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+              <Check class="h-4 w-4" />
               {{ isEditing ? 'Simpan Perubahan' : 'Tambah User' }}
             </button>
           </div>
@@ -1088,15 +601,12 @@ const currentYear = new Date().getFullYear()
             aria-label="Tutup"
             class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors duration-200 hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X class="h-4 w-4" />
           </button>
         </div>
 
         <!-- Badan modal -->
         <div class="modal-scroll min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
-          <!-- Ringkasan pengguna -->
           <div class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3">
             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold" :class="selectedUser ? getRoleAvatarClass(selectedUser.role) : 'border-slate-700 bg-slate-800 text-slate-300'">
               {{ selectedUser ? getInitials(selectedUser.name) : '?' }}
@@ -1118,9 +628,7 @@ const currentYear = new Date().getFullYear()
           </div>
 
           <p class="flex items-start gap-1.5 text-[10px] leading-relaxed text-slate-500">
-            <svg class="mt-px h-3 w-3 shrink-0 text-amber-400/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+            <Lock class="mt-px h-3 w-3 shrink-0 text-amber-400/70" />
             Pengguna wajib mengganti kata sandi default ini setelah berhasil masuk.
           </p>
         </div>
@@ -1140,9 +648,7 @@ const currentYear = new Date().getFullYear()
               @click="handleConfirmReset"
               class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition-all duration-200 hover:bg-amber-400 active:scale-[.97] sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-              </svg>
+              <KeyRound class="h-4 w-4" />
               Konfirmasi Reset
             </button>
           </div>
@@ -1175,15 +681,12 @@ const currentYear = new Date().getFullYear()
             aria-label="Tutup"
             class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors duration-200 hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X class="h-4 w-4" />
           </button>
         </div>
 
         <!-- Badan modal -->
         <div class="modal-scroll min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
-          <!-- Ringkasan pengguna -->
           <div class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3">
             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold" :class="selectedUser ? getRoleAvatarClass(selectedUser.role) : 'border-slate-700 bg-slate-800 text-slate-300'">
               {{ selectedUser ? getInitials(selectedUser.name) : '?' }}
@@ -1203,100 +706,8 @@ const currentYear = new Date().getFullYear()
             Seluruh hak akses pengguna ini pada sistem akan dicabut secara permanen.
           </p>
 
-          <!-- Peringatan khusus akun Admin -->
           <div v-if="selectedUser?.role === 'Admin'" class="flex items-start gap-2.5 rounded-lg border border-rose-500/25 bg-rose-500/[0.06] px-3.5 py-3">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-rose-400/90" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p class="text-[11px] leading-relaxed text-slate-400">
-              <span class="font-semibold text-rose-300">Akun Administrator.</span>
-              Pastikan masih tersedia minimal satu administrator lain sebelum melanjutkan penghapusan.
-            </p>
-          </div>
-        </div>
-        <!-- Kaki modal -->
-        <div class="shrink-0 border-t border-amber-500/20 bg-slate-950/30 p-5">
-          <div class="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              @click="showResetModal = false"
-              class="inline-flex w-full items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-slate-600 hover:text-white active:scale-[.97] sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              @click="handleConfirmReset"
-              class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition-all duration-200 hover:bg-amber-400 active:scale-[.97] sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-              </svg>
-              Konfirmasi Reset
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============ Modal hapus pengguna ============ -->
-    <div
-      v-if="showDeleteModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="delete-title"
-    >
-      <div class="backdrop-in absolute inset-0 bg-slate-950/80 backdrop-blur-sm" aria-hidden="true" @click="showDeleteModal = false"></div>
-
-      <div class="modal-panel relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-rose-500/30 bg-slate-900 shadow-2xl shadow-black/50">
-        <span class="absolute inset-x-0 top-0 z-20 h-[2px] bg-gradient-to-r from-rose-500/70 via-rose-500/20 to-transparent" aria-hidden="true"></span>
-
-        <!-- Kepala modal -->
-        <div class="flex shrink-0 items-start justify-between gap-4 border-b border-rose-500/20 px-5 py-4">
-          <div>
-            <h3 id="delete-title" class="text-sm font-bold tracking-tight text-slate-100">Hapus Pengguna</h3>
-            <p class="mt-0.5 text-[11px] text-slate-500">Tindakan permanen dan tidak dapat dibatalkan</p>
-          </div>
-          <button
-            type="button"
-            @click="showDeleteModal = false"
-            aria-label="Tutup"
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors duration-200 hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Badan modal -->
-        <div class="modal-scroll min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
-          <!-- Ringkasan pengguna -->
-          <div class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold" :class="selectedUser ? getRoleAvatarClass(selectedUser.role) : 'border-slate-700 bg-slate-800 text-slate-300'">
-              {{ selectedUser ? getInitials(selectedUser.name) : '?' }}
-            </div>
-            <div class="min-w-0">
-              <p class="truncate text-xs font-semibold text-slate-100">{{ selectedUser?.name }}</p>
-              <p class="mt-0.5 truncate text-[11px] text-slate-500">{{ selectedUser?.email }}</p>
-            </div>
-            <span v-if="selectedUser" class="ml-auto inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider" :class="getRoleBadgeClass(selectedUser.role)">
-              {{ selectedUser.role }}
-            </span>
-          </div>
-
-          <p class="text-xs leading-relaxed text-slate-400">
-            Apakah Anda yakin ingin menghapus akun
-            <span class="font-semibold text-slate-200">{{ selectedUser?.name }}</span>?
-            Seluruh hak akses pengguna ini pada sistem akan dicabut secara permanen.
-          </p>
-
-          <!-- Peringatan khusus akun Admin -->
-          <div v-if="selectedUser?.role === 'Admin'" class="flex items-start gap-2.5 rounded-lg border border-rose-500/25 bg-rose-500/[0.06] px-3.5 py-3">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-rose-400/90" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-rose-400/90" />
             <p class="text-[11px] leading-relaxed text-slate-400">
               <span class="font-semibold text-rose-300">Akun Administrator.</span>
               Pastikan masih tersedia minimal satu administrator lain sebelum melanjutkan penghapusan.
@@ -1319,9 +730,7 @@ const currentYear = new Date().getFullYear()
               @click="handleDeleteUser"
               class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-500/20 transition-all duration-200 hover:bg-rose-400 hover:text-slate-950 active:scale-[.97] sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-              </svg>
+              <Trash2 class="h-4 w-4" />
               Hapus Akun
             </button>
           </div>
@@ -1331,97 +740,328 @@ const currentYear = new Date().getFullYear()
   </div>
 </template>
 
-<style>
-/* Inter sebagai identitas tipografi (aman dihapus jika sudah dikonfigurasi di Tailwind) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+<script setup>
+import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { 
+  Users, 
+  UserCheck, 
+  GraduationCap, 
+  ShieldCheck, 
+  LogOut, 
+  Plus, 
+  Search, 
+  X, 
+  ChevronDown, 
+  Pencil, 
+  KeyRound, 
+  Ban, 
+  CheckCircle2, 
+  Trash2, 
+  UserX, 
+  ChevronLeft, 
+  ChevronRight, 
+  Lock, 
+  User, 
+  Mail, 
+  IdCard, 
+  Check, 
+  AlertTriangle,
+  BarChart3,
+  FileText,
+  Settings
+} from 'lucide-vue-next'
 
-.sapa-root {
-  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+const route = useRoute()
+
+// State Logo & Form
+const logoFailed = ref(false)
+const currentYear = new Date().getFullYear()
+
+// Navigasi Bar
+const navItems = [
+  { label: 'Analitik', to: '/admin/dashboard', icon: BarChart3 },
+  { label: 'Semua Laporan', to: '/admin/reports', icon: FileText },
+  { label: 'Manajemen User', to: '/admin/users', icon: Users },
+  { label: 'Pengaturan', to: '/admin/settings', icon: Settings },
+]
+
+const isActive = (item) => route?.path === item.to
+
+// Statistik Cards Data
+const statCards = ref([
+  { label: 'Total Pengguna', value: '124', num: 'text-slate-100', tile: 'border-slate-700 bg-slate-800 text-emerald-400', bar: 'bg-emerald-500', pct: 100, caption: 'Semua akun terdaftar', icon: Users },
+  { label: 'Siswa', value: '86', num: 'text-emerald-400', tile: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400', bar: 'bg-emerald-500', pct: 69, caption: '69% dari total akun', icon: GraduationCap },
+  { label: 'Pengguna Aktif', value: '110', num: 'text-blue-400', tile: 'border-blue-500/30 bg-blue-500/10 text-blue-400', bar: 'bg-blue-500', pct: 88, caption: 'Status aktif saat ini', icon: UserCheck },
+  { label: 'Admin & Staf', value: '12', num: 'text-purple-400', tile: 'border-purple-500/30 bg-purple-500/10 text-purple-400', bar: 'bg-purple-500', pct: 10, caption: 'Pengelola hak akses', icon: ShieldCheck }
+])
+
+// Filter & Table States
+const searchQuery = ref('')
+const selectedRole = ref('all')
+const selectedStatus = ref('all')
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+
+const statusPills = [
+  { label: 'Semua', value: 'all', active: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
+  { label: 'Aktif', value: 'Aktif', active: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
+  { label: 'Nonaktif', value: 'Nonaktif', active: 'border-slate-600 bg-slate-800 text-slate-200' }
+]
+
+const pillIdle = 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
+
+// Dummy Users Data
+const users = ref([
+  { id: 1, name: 'Ahmad Dahlan', email: 'ahmad@sekolah.sch.id', nip_nisn: '1029384756', role: 'Siswa', status: 'Aktif', isActive: true, last_login: '10 Min yang lalu' },
+  { id: 2, name: 'Siti Nurhaliza, M.Pd.', email: 'siti.bk@sekolah.sch.id', nip_nisn: '198503152010012003', role: 'Guru BK', status: 'Aktif', isActive: true, last_login: '1 Jam yang lalu' },
+  { id: 3, name: 'Budi Santoso', email: 'budi.admin@sekolah.sch.id', nip_nisn: '197805202005011002', role: 'Admin', status: 'Aktif', isActive: true, last_login: 'Sekarang' },
+  { id: 4, name: 'Eko Prasetyo', email: 'eko.sarpras@sekolah.sch.id', nip_nisn: '198211102008041001', role: 'Guru', status: 'Nonaktif', isActive: false, last_login: '3 Hari yang lalu' }
+])
+
+const totalUsers = computed(() => users.value.length)
+
+const statusCounts = computed(() => {
+  return users.value.reduce((acc, u) => {
+    acc.all = (acc.all || 0) + 1
+    acc[u.status] = (acc[u.status] || 0) + 1
+    return acc
+  }, { all: 0 })
+})
+
+const hasActiveFilters = computed(() => searchQuery.value !== '' || selectedRole.value !== 'all' || selectedStatus.value !== 'all')
+
+const filteredUsers = computed(() => {
+  return users.value.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                          u.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                          u.nip_nisn.includes(searchQuery.value)
+    const matchesRole = selectedRole.value === 'all' || u.role === selectedRole.value
+    const matchesStatus = selectedStatus.value === 'all' || u.status === selectedStatus.value
+    return matchesSearch && matchesRole && matchesStatus
+  })
+})
+
+const totalPages = computed(() => Math.ceil(filteredUsers.value.length / itemsPerPage.value) || 1)
+
+const tableRows = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  return filteredUsers.value.slice(start, start + itemsPerPage.value).map(u => ({
+    ...u,
+    avatarClass: getRoleAvatarClass(u.role),
+    roleBadge: getRoleBadgeClass(u.role)
+  }))
+})
+
+// Modals State
+const showUserModal = ref(false)
+const showResetModal = ref(false)
+const showDeleteModal = ref(false)
+const isEditing = ref(false)
+const selectedUser = ref(null)
+
+const userForm = ref({ name: '', email: '', nip_nisn: '', role: 'Siswa', status: 'Aktif' })
+const userErrors = ref({})
+
+const roleOptions = [
+  { value: 'Siswa', label: 'Siswa', desc: 'Akses terbatas untuk aspirasi', active: 'border-blue-500/50 bg-blue-500/10', dot: 'bg-blue-400' },
+  { value: 'Guru', label: 'Guru (Sarpras)', desc: 'Penanganan laporan fasilitas', active: 'border-emerald-500/50 bg-emerald-500/10', dot: 'bg-emerald-400' },
+  { value: 'Guru BK', label: 'Guru BK', desc: 'Akses laporan bimbingan & perundungan', active: 'border-amber-500/50 bg-amber-500/10', dot: 'bg-amber-400' },
+  { value: 'Admin', label: 'Admin', desc: 'Akses penuh ke seluruh sistem', active: 'border-purple-500/50 bg-purple-500/10', dot: 'bg-purple-400' },
+]
+
+// Helpers
+const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : ''
+
+const getRoleAvatarClass = (role) => {
+  switch (role) {
+    case 'Admin': return 'border-purple-500/40 bg-purple-500/10 text-purple-300'
+    case 'Guru BK': return 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+    case 'Guru': return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+    default: return 'border-blue-500/40 bg-blue-500/10 text-blue-300'
+  }
 }
-</style>
 
+const getRoleBadgeClass = (role) => {
+  switch (role) {
+    case 'Admin': return 'border-purple-500/30 bg-purple-500/10 text-purple-400'
+    case 'Guru BK': return 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+    case 'Guru': return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+    default: return 'border-blue-500/30 bg-blue-500/10 text-blue-400'
+  }
+}
+
+// Handlers
+const clearFilters = () => {
+  searchQuery.value = ''
+  selectedRole.value = 'all'
+  selectedStatus.value = 'all'
+}
+
+const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
+const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
+
+const openCreateModal = () => {
+  isEditing.value = false
+  userForm.value = { name: '', email: '', nip_nisn: '', role: 'Siswa', status: 'Aktif' }
+  userErrors.value = {}
+  showUserModal.value = true
+}
+
+const openEditModal = (user) => {
+  isEditing.value = true
+  selectedUser.value = user
+  userForm.value = { ...user }
+  userErrors.value = {}
+  showUserModal.value = true
+}
+
+const openResetPasswordModal = (user) => {
+  selectedUser.value = user
+  showResetModal.value = true
+}
+
+const openDeleteModal = (user) => {
+  selectedUser.value = user
+  showDeleteModal.value = true
+}
+
+const toggleUserStatus = (user) => {
+  user.isActive = !user.isActive
+  user.status = user.isActive ? 'Aktif' : 'Nonaktif'
+}
+
+const handleSaveUser = () => {
+  userErrors.value = {}
+  if (!userForm.value.name) userErrors.value.name = 'Nama wajib diisi'
+  if (!userForm.value.email) userErrors.value.email = 'Email wajib diisi'
+
+  if (Object.keys(userErrors.value).length === 0) {
+    if (isEditing.value) {
+      const idx = users.value.findIndex(u => u.id === selectedUser.value.id)
+      if (idx !== -1) users.value[idx] = { ...users.value[idx], ...userForm.value, isActive: userForm.value.status === 'Aktif' }
+    } else {
+      users.value.push({
+        id: Date.now(),
+        ...userForm.value,
+        isActive: userForm.value.status === 'Aktif',
+        last_login: 'Belum pernah'
+      })
+    }
+    showUserModal.value = false
+  }
+}
+
+const handleConfirmReset = () => {
+  showResetModal.value = false
+}
+
+const handleDeleteUser = () => {
+  users.value = users.value.filter(u => u.id !== selectedUser.value.id)
+  showDeleteModal.value = false
+}
+
+const handleLogout = () => {
+  // Tambahkan logika logout sesuai kebutuhan
+}
+</script>
 <style scoped>
-/* Entrance seksi: fade-up halus dengan stagger */
-.fade-up {
-  opacity: 0;
-  animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* ==========================================================================
+   Animasi & Performa
+   ========================================================================== */
+
+/* Keyframes Muncul Modal */
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Entrance baris: hanya opacity — interaksi hover tetap bekerja */
-.card-enter {
-  opacity: 0;
-  animation: card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes card-in {
+/* Keyframes Fade Background Backdrop */
+@keyframes backdropIn {
   from { opacity: 0; }
-  to   { opacity: 1; }
+  to { opacity: 1; }
 }
 
-/* Bar statistik tumbuh dari kiri saat mount */
-.stat-bar {
-  transform-origin: left center;
-  animation: grow-x 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+/* Keyframes Entri Elemen Halaman */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-@keyframes grow-x {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
+/* Keyframes Baris Tabel */
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Modal: latar memudar, panel naik dengan skala halus */
+/* Utilitas Kelas Animasi */
 .backdrop-in {
-  animation: backdrop-in 0.25s ease both;
-}
-
-@keyframes backdrop-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  animation: backdropIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .modal-panel {
-  animation: modal-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
-@keyframes modal-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+.fade-up {
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
-/* Gulir tipis pada badan modal */
-.modal-scroll::-webkit-scrollbar {
-  width: 6px;
+.card-enter {
+  animation: cardEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
-.modal-scroll::-webkit-scrollbar-track {
-  background: transparent;
+/* Transisi Bar Statistik */
+.stat-bar {
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.modal-scroll::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
-}
+/* ==========================================================================
+   Kustomisasi Scrollbar
+   ========================================================================== */
 
-/* Gulir horizontal nav mobile tanpa scrollbar */
+/* Sembunyikan Scrollbar Navigasi Horizontal (Mobile) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/* Scrollbar Halus untuk Modal */
+.modal-scroll::-webkit-scrollbar {
+  width: 5px;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .fade-up,
-  .card-enter,
-  .stat-bar,
-  .backdrop-in,
-  .modal-panel { animation: none; opacity: 1; }
+.modal-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8);
+  border-radius: 9999px;
+}
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.5);
 }
 </style>
