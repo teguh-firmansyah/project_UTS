@@ -5,6 +5,28 @@ import { toast } from "vue-sonner";
 import { useAuthStore } from "@/stores/auth";
 import reportService from "@/services/reportService";
 
+// Import Lucide Icons
+import {
+  ArrowLeft,
+  Printer,
+  Loader2,
+  Lock,
+  CheckCircle2,
+  Calendar,
+  User,
+  Clock,
+  Paperclip,
+  History,
+  MessageSquare,
+  Send,
+  AlertTriangle,
+  ClipboardList,
+  Plus,
+  X,
+  ChevronDown,
+  Check
+} from "lucide-vue-next";
+
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -16,7 +38,7 @@ const showImageModal = ref(false);
 const activeAttachmentUrl = ref(null);
 
 /* ---------------------------------- */
-/* Mapping status backend <-> label UI (sama seperti di halaman antrian) */
+/* Mapping status backend <-> label UI */
 /* ---------------------------------- */
 const STATUS_MAP = {
   pending: "Menunggu",
@@ -40,14 +62,13 @@ const RELATION_MAP = { victim: "Korban Langsung", witness: "Saksi" };
 const form = ref({
   status: "",
   handling_notes: "",
-  counselor_action: "Konseling Individu", // catatan: field ini tidak ada di backend,
-  // digabung ke handling_notes saat submit
+  counselor_action: "Konseling Individu",
 });
 
 const formErrors = ref({});
 
 /* ---------------------------------- */
-/* Data laporan — sekarang dari API    */
+/* Data laporan — dari API             */
 /* ---------------------------------- */
 const report = ref(null);
 
@@ -55,7 +76,6 @@ async function loadReport() {
   isLoading.value = true;
   try {
     const response = await reportService.getBullyingReportDetail(reportId);
-    // Mendukung struktur { data: { ... } } atau response langsung
     const r = response.data?.data || response.data || response;
 
     if (!r || !r.id) {
@@ -92,7 +112,6 @@ async function loadReport() {
       handled_by: detail.handled_by_counselor_id ?? null,
       handling_notes: detail.handling_notes ?? "",
 
-      // Ambil status_logs / statusLogs dengan klausa opsional (?.) agar tidak crash jika undefined
       timeline: (r.status_logs || r.statusLogs || []).map((log) => ({
         id: log.id,
         status: log.new_status,
@@ -110,78 +129,76 @@ async function loadReport() {
       })),
     };
 
-    // Set nilai form
     form.value.status = r.status;
     form.value.handling_notes = detail.handling_notes || "";
   } catch (error) {
     console.error("Gagal memuat detail laporan:", error);
     toast.error("Gagal memuat detail laporan.");
   } finally {
-    // PASTI di-set false agar loading spinner/layar memuat menghilang
     isLoading.value = false;
   }
 }
 
-const comments = ref([])
-const newMessage = ref('')
-const isSendingMessage = ref(false)
-const isLoadingComments = ref(true)
+const comments = ref([]);
+const newMessage = ref("");
+const isSendingMessage = ref(false);
+const isLoadingComments = ref(true);
 
 async function loadComments() {
-  isLoadingComments.value = true
+  isLoadingComments.value = true;
   try {
-    const data = await reportService.getComments(reportId)
+    const data = await reportService.getComments(reportId);
     comments.value = (data.data ?? data).map((c) => ({
       id: c.id,
       text: c.comment,
-      authorName: c.author?.name ?? 'Anonim',
-      isCounselor: c.author?.role === 'counselor',
+      authorName: c.author?.name ?? "Anonim",
+      isCounselor: c.author?.role === "counselor",
       isMine: c.is_mine,
-      createdAt: new Date(c.created_at).toLocaleString('id-ID', {
-        dateStyle: 'short',
-        timeStyle: 'short',
+      createdAt: new Date(c.created_at).toLocaleString("id-ID", {
+        dateStyle: "short",
+        timeStyle: "short",
       }),
-    }))
+    }));
   } catch {
-    toast.error('Gagal memuat percakapan.')
+    toast.error("Gagal memuat percakapan.");
   } finally {
-    isLoadingComments.value = false
+    isLoadingComments.value = false;
   }
 }
 
 async function handleSendMessage() {
-  if (!newMessage.value.trim() || isSendingMessage.value) return
+  if (!newMessage.value.trim() || isSendingMessage.value) return;
 
-  isSendingMessage.value = true
+  isSendingMessage.value = true;
   try {
-    const data = await reportService.addComment(reportId, newMessage.value.trim())
-    const c = data.comment
+    const data = await reportService.addComment(reportId, newMessage.value.trim());
+    const c = data.comment;
     comments.value.push({
       id: c.id,
       text: c.comment,
-      authorName: c.author?.name ?? 'Anda',
-      isCounselor: c.author?.role === 'counselor',
+      authorName: c.author?.name ?? "Anda",
+      isCounselor: c.author?.role === "counselor",
       isMine: true,
-      createdAt: new Date(c.created_at).toLocaleString('id-ID', {
-        dateStyle: 'short',
-        timeStyle: 'short',
+      createdAt: new Date(c.created_at).toLocaleString("id-ID", {
+        dateStyle: "short",
+        timeStyle: "short",
       }),
-    })
-    newMessage.value = ''
+    });
+    newMessage.value = "";
   } catch (error) {
-    toast.error(error?.response?.data?.message || 'Gagal mengirim pesan.')
+    toast.error(error?.response?.data?.message || "Gagal mengirim pesan.");
   } finally {
-    isSendingMessage.value = false
+    isSendingMessage.value = false;
   }
 }
 
 const initialsShort = (name) => {
-  if (!name || typeof name !== 'string') return '?'
-  const parts = name.trim().split(/\s+/)
+  if (!name || typeof name !== "string") return "?";
+  const parts = name.trim().split(/\s+/);
   return parts.length > 1
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-    : name.slice(0, 2).toUpperCase()
-}
+    : name.slice(0, 2).toUpperCase();
+};
 
 onMounted(() => {
   loadReport();
@@ -207,14 +224,10 @@ function openImage(url) {
   showImageModal.value = true;
 }
 
-/* Kembali — PERBAIKAN: path yang benar adalah bullying-queue, bukan bullying-reports */
 const goBack = () => {
   router.push({ name: "counselor-bullying-queue" });
 };
 
-/* ---------------------------------- */
-/* Templat respon cepat                */
-/* ---------------------------------- */
 const noteTemplates = [
   {
     label: "Konseling Awal",
@@ -236,20 +249,17 @@ watch(
   () => form.value.status,
   () => {
     if (formErrors.value.status) formErrors.value.status = "";
-  },
+  }
 );
 watch(
   () => form.value.handling_notes,
   () => {
     if (formErrors.value.handling_notes) formErrors.value.handling_notes = "";
-  },
+  }
 );
 
 const notesLength = computed(() => (form.value.handling_notes || "").length);
 
-/* ---------------------------------- */
-/* Submit — terhubung ke API           */
-/* ---------------------------------- */
 const handleUpdateStatus = async () => {
   formErrors.value = {};
 
@@ -259,7 +269,7 @@ const handleUpdateStatus = async () => {
     if (!form.value.handling_notes.trim())
       formErrors.value.handling_notes = "Catatan penanganan wajib diisi.";
     toast.error(
-      "Mohon lengkapi status dan catatan penanganan terlebih dahulu.",
+      "Mohon lengkapi status dan catatan penanganan terlebih dahulu."
     );
     return;
   }
@@ -284,7 +294,6 @@ const handleUpdateStatus = async () => {
       description: `Status kasus kini: ${form.value.status}.`,
     });
 
-    // Muat ulang data terbaru
     await loadReport();
   } catch (error) {
     console.error("Error handling report:", error);
@@ -293,23 +302,19 @@ const handleUpdateStatus = async () => {
     if (validationErrors) {
       toast.error(
         Object.values(validationErrors)[0]?.[0] ||
-          "Periksa kembali data yang diisi.",
+          "Periksa kembali data yang diisi."
       );
     } else {
       toast.error(
         error?.response?.data?.message ||
-          "Gagal memperbarui laporan. Silakan coba lagi.",
+          "Gagal memperbarui laporan. Silakan coba lagi."
       );
     }
   } finally {
-    // Dipastikan selalu berhenti loading
     isSubmitting.value = false;
   }
 };
 
-/* ---------------------------------- */
-/* Buka identitas (fitur reveal-identity) */
-/* ---------------------------------- */
 const isRevealing = ref(false);
 async function handleRevealIdentity() {
   isRevealing.value = true;
@@ -321,7 +326,7 @@ async function handleRevealIdentity() {
     toast.success("Identitas pelapor berhasil dibuka.");
   } catch (error) {
     toast.error(
-      error?.response?.data?.message || "Gagal membuka identitas pelapor.",
+      error?.response?.data?.message || "Gagal membuka identitas pelapor."
     );
   } finally {
     isRevealing.value = false;
@@ -332,9 +337,6 @@ const handlePrint = () => {
   window.print();
 };
 
-/* ---------------------------------- */
-/* Helper badge & prioritas (sama seperti sebelumnya) */
-/* ---------------------------------- */
 const getStatusBadge = (status) => {
   switch (status) {
     case "Menunggu":
@@ -377,7 +379,7 @@ const getPriority = (priority) => {
 };
 
 const priority = computed(() =>
-  report.value ? getPriority(report.value.priority) : getPriority("Rendah"),
+  report.value ? getPriority(report.value.priority) : getPriority("Rendah")
 );
 
 const statusOptions = [
@@ -410,8 +412,6 @@ const statusOptions = [
     active: "border-red-500/50 bg-red-500/[0.06] text-red-400",
   },
 ];
-// Catatan: opsi 'Menunggu' dihapus dari pilihan karena backend tidak menerima
-// transisi balik ke 'pending' lewat endpoint handle()
 
 const actionOptions = [
   { value: "Konseling Individu", label: "Konseling Individu (Pelapor)" },
@@ -430,33 +430,25 @@ const caseMeta = computed(() => {
     {
       label: "Tanggal Kejadian",
       value: report.value.incident_date,
-      icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+      icon: Calendar,
     },
     {
       label: "Relasi Pelapor",
       value: report.value.reporter_relation,
-      icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
+      icon: User,
     },
     {
       label: "Waktu Pelaporan",
       value: report.value.created_at,
-      icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+      icon: Clock,
     },
   ];
-  // Catatan: 'Lokasi Kejadian' dihapus dari metadata karena field ini
-  // tidak ada di skema bullying_report_details — hanya ada di fasilitas
 });
 
-// Perbaikan fungsi initialsOf agar aman dari tipe data selain string
 const initialsOf = (name) => {
-  // Jika name bernilai null, undefined, atau bukan string, kembalikan fallback
-  if (!name || typeof name !== "string") {
-    return "?";
-  }
-
+  if (!name || typeof name !== "string") return "?";
   const cleanName = name.trim();
   if (!cleanName) return "?";
-
   const parts = cleanName.split(" ").filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
@@ -478,21 +470,7 @@ const currentYear = new Date().getFullYear();
     <!-- Skeleton loading full page -->
     <div v-if="isLoading" class="flex flex-1 items-center justify-center">
       <div class="flex items-center gap-3 text-slate-400">
-        <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-          ></path>
-        </svg>
+        <Loader2 class="h-5 w-5 animate-spin" />
         <span class="text-sm">Memuat detail laporan...</span>
       </div>
     </div>
@@ -510,19 +488,7 @@ const currentYear = new Date().getFullYear();
             @click="goBack"
             class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg
-              class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
+            <ArrowLeft class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
             <span class="hidden sm:inline">Kembali ke Antrian</span>
             <span class="sm:hidden">Kembali</span>
           </button>
@@ -534,19 +500,7 @@ const currentYear = new Date().getFullYear();
               title="Cetak / simpan sebagai PDF"
               class="hidden items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 sm:inline-flex"
             >
-              <svg
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-4 0h-4v4h4v-4z"
-                />
-              </svg>
+              <Printer class="h-4 w-4" />
               <span class="hidden md:inline">Cetak Dokumen</span>
               <span class="md:hidden">Cetak</span>
             </button>
@@ -698,19 +652,7 @@ const currentYear = new Date().getFullYear();
                     <div
                       class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-rose-500/25 bg-rose-500/10 text-rose-400"
                     >
-                      <svg
-                        class="h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                        />
-                      </svg>
+                      <Lock class="h-5 w-5" />
                     </div>
                     <div class="min-w-0">
                       <h3 class="text-xs font-bold text-rose-300">
@@ -749,19 +691,7 @@ const currentYear = new Date().getFullYear();
                         v-if="report.reporter_name"
                         class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400"
                       >
-                        <svg
-                          class="h-3.5 w-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
+                        <CheckCircle2 class="h-3.5 w-3.5" />
                         Terverifikasi Siswa
                       </span>
                     </div>
@@ -786,7 +716,6 @@ const currentYear = new Date().getFullYear();
                       </div>
                     </div>
 
-                    <!-- Belum ada nama (tidak anonim, tapi identitas belum di-load / perlu direveal) -->
                     <div
                       v-else
                       class="mt-4 flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] px-3.5 py-3"
@@ -815,19 +744,10 @@ const currentYear = new Date().getFullYear();
                     :key="m.label"
                     class="flex items-start gap-2.5 rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3"
                   >
-                    <svg
+                    <component
+                      :is="m.icon"
                       class="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        :d="m.icon"
-                      />
-                    </svg>
+                    />
                     <div class="min-w-0">
                       <dt
                         class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600"
@@ -857,25 +777,13 @@ const currentYear = new Date().getFullYear();
                   </div>
                 </div>
 
-                <!-- Lampiran bukti — sekarang mendukung multi-file -->
+                <!-- Lampiran bukti -->
                 <div
                   v-if="report.attachments.length > 0"
                   class="space-y-3 border-t border-slate-800/70 pt-5"
                 >
                   <div class="flex items-center gap-2">
-                    <svg
-                      class="h-3.5 w-3.5 text-slate-600"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                      />
-                    </svg>
+                    <Paperclip class="h-3.5 w-3.5 text-slate-600" />
                     <p
                       class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500"
                     >
@@ -919,26 +827,13 @@ const currentYear = new Date().getFullYear();
                 <p
                   class="flex items-center gap-1.5 border-t border-slate-800/70 pt-4 text-[11px] text-slate-600"
                 >
-                  <svg
-                    class="h-3.5 w-3.5 shrink-0 text-emerald-500/70"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
-                  </svg>
-                  Dokumen kasus bersifat rahasia — hanya untuk petugas
-                  berwenang.
+                  <Lock class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
+                  Dokumen kasus bersifat rahasia — hanya untuk petugas berwenang.
                 </p>
               </div>
             </section>
 
-            <!-- ===== Timeline audit — sekarang dari statusLogs ===== -->
+            <!-- ===== Timeline audit ===== -->
             <section
               class="print-card fade-up overflow-hidden rounded-xl border border-slate-800 bg-slate-900"
               style="animation-delay: 90ms"
@@ -947,19 +842,7 @@ const currentYear = new Date().getFullYear();
                 class="flex items-center justify-between gap-3 border-b border-slate-800/70 px-5 py-4 sm:px-6"
               >
                 <div class="flex items-center gap-2.5">
-                  <svg
-                    class="h-4 w-4 text-emerald-400"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <History class="h-4 w-4 text-emerald-400" />
                   <div>
                     <h2 class="text-sm font-bold tracking-tight text-slate-100">
                       Riwayat Audit &amp; Timeline Penanganan
@@ -986,19 +869,7 @@ const currentYear = new Date().getFullYear();
                     <span
                       class="timeline-dot flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-500 bg-emerald-500 text-slate-950"
                     >
-                      <svg
-                        class="h-3 w-3"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
+                      <Check class="h-3 w-3 stroke-[3]" />
                     </span>
                     <span
                       v-if="i < report.timeline.length - 1"
@@ -1059,90 +930,111 @@ const currentYear = new Date().getFullYear();
               <p
                 class="flex items-center gap-1.5 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 text-[11px] text-slate-600 sm:px-6"
               >
-                <svg
-                  class="h-3.5 w-3.5 shrink-0 text-emerald-500/70"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                  />
-                </svg>
+                <CheckCircle2 class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
                 Jejak audit tidak dapat diubah setelah tercatat
               </p>
             </section>
 
             <!-- ===== Percakapan dengan Pelapor ===== -->
-<section class="print-card fade-up overflow-hidden rounded-xl border border-slate-800 bg-slate-900" style="animation-delay: 120ms">
-  <div class="flex items-center justify-between gap-3 border-b border-slate-800/70 px-5 py-4 sm:px-6">
-    <div class="flex items-center gap-2.5">
-      <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-      <div>
-        <h2 class="text-sm font-bold tracking-tight text-slate-100">Percakapan dengan Pelapor</h2>
-        <p class="mt-0.5 text-[11px] text-slate-500">Komunikasi dua arah terkait penanganan kasus</p>
-      </div>
-    </div>
-    <span class="whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">{{ comments.length }} Pesan</span>
-  </div>
+            <section
+              class="print-card fade-up overflow-hidden rounded-xl border border-slate-800 bg-slate-900"
+              style="animation-delay: 120ms"
+            >
+              <div
+                class="flex items-center justify-between gap-3 border-b border-slate-800/70 px-5 py-4 sm:px-6"
+              >
+                <div class="flex items-center gap-2.5">
+                  <MessageSquare class="h-4 w-4 text-emerald-400" />
+                  <div>
+                    <h2 class="text-sm font-bold tracking-tight text-slate-100">
+                      Percakapan dengan Pelapor
+                    </h2>
+                    <p class="mt-0.5 text-[11px] text-slate-500">
+                      Komunikasi dua arah terkait penanganan kasus
+                    </p>
+                  </div>
+                </div>
+                <span
+                  class="whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400"
+                  >{{ comments.length }} Pesan</span
+                >
+              </div>
 
-  <div class="max-h-96 space-y-3 overflow-y-auto px-5 py-5 sm:px-6">
-    <div v-if="isLoadingComments" class="space-y-3">
-      <div v-for="i in 3" :key="i" class="h-14 rounded-lg bg-slate-800/50 animate-pulse"></div>
-    </div>
+              <div class="max-h-96 space-y-3 overflow-y-auto px-5 py-5 sm:px-6">
+                <div v-if="isLoadingComments" class="space-y-3">
+                  <div
+                    v-for="i in 3"
+                    :key="i"
+                    class="h-14 animate-pulse rounded-lg bg-slate-800/50"
+                  ></div>
+                </div>
 
-    <p v-else-if="comments.length === 0" class="py-6 text-center text-xs text-slate-500">
-      Belum ada percakapan. Kirim pesan untuk memulai komunikasi dengan pelapor.
-    </p>
+                <p
+                  v-else-if="comments.length === 0"
+                  class="py-6 text-center text-xs text-slate-500"
+                >
+                  Belum ada percakapan. Kirim pesan untuk memulai komunikasi dengan pelapor.
+                </p>
 
-    <div
-      v-for="msg in comments"
-      :key="msg.id"
-      class="flex gap-2.5"
-      :class="msg.isMine ? 'flex-row-reverse' : ''"
-    >
-      <div
-        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-        :class="msg.isCounselor ? 'bg-emerald-500 text-slate-950' : 'border border-slate-600 bg-slate-700 text-slate-200'"
-      >
-        {{ initialsShort(msg.authorName) }}
-      </div>
+                <div
+                  v-for="msg in comments"
+                  :key="msg.id"
+                  class="flex gap-2.5"
+                  :class="msg.isMine ? 'flex-row-reverse' : ''"
+                >
+                  <div
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+                    :class="
+                      msg.isCounselor
+                        ? 'bg-emerald-500 text-slate-950'
+                        : 'border border-slate-600 bg-slate-700 text-slate-200'
+                    "
+                  >
+                    {{ initialsShort(msg.authorName) }}
+                  </div>
 
-      <div class="max-w-[75%] rounded-lg px-3.5 py-2.5" :class="msg.isMine ? 'bg-emerald-500/15 border border-emerald-500/25' : 'bg-slate-800/60 border border-slate-700'">
-        <p class="text-[10px] font-semibold" :class="msg.isMine ? 'text-emerald-400' : 'text-slate-300'">{{ msg.authorName }}</p>
-        <p class="mt-1 text-xs leading-relaxed text-slate-200 whitespace-pre-line">{{ msg.text }}</p>
-        <p class="mt-1 text-[9px] text-slate-500">{{ msg.createdAt }}</p>
-      </div>
-    </div>
-  </div>
+                  <div
+                    class="max-w-[75%] rounded-lg px-3.5 py-2.5"
+                    :class="
+                      msg.isMine
+                        ? 'border border-emerald-500/25 bg-emerald-500/15'
+                        : 'border border-slate-700 bg-slate-800/60'
+                    "
+                  >
+                    <p
+                      class="text-[10px] font-semibold"
+                      :class="msg.isMine ? 'text-emerald-400' : 'text-slate-300'"
+                    >
+                      {{ msg.authorName }}
+                    </p>
+                    <p class="mt-1 text-xs leading-relaxed whitespace-pre-line text-slate-200">
+                      {{ msg.text }}
+                    </p>
+                    <p class="mt-1 text-[9px] text-slate-500">{{ msg.createdAt }}</p>
+                  </div>
+                </div>
+              </div>
 
-  <form @submit.prevent="handleSendMessage" class="flex items-center gap-2.5 border-t border-slate-800/70 bg-slate-950/30 p-4 sm:px-6">
-    <input
-      v-model="newMessage"
-      type="text"
-      placeholder="Tulis pesan untuk pelapor..."
-      class="flex-1 rounded-lg border border-slate-800 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
-    />
-    <button
-      type="submit"
-      :disabled="isSendingMessage || !newMessage.trim()"
-      class="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      <svg v-if="!isSendingMessage" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-      </svg>
-      <svg v-else class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-      </svg>
-    </button>
-  </form>
-</section>
+              <form
+                @submit.prevent="handleSendMessage"
+                class="flex items-center gap-2.5 border-t border-slate-800/70 bg-slate-950/30 p-4 sm:px-6"
+              >
+                <input
+                  v-model="newMessage"
+                  type="text"
+                  placeholder="Tulis pesan untuk pelapor..."
+                  class="flex-1 rounded-lg border border-slate-800 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+                />
+                <button
+                  type="submit"
+                  :disabled="isSendingMessage || !newMessage.trim()"
+                  class="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Send v-if="!isSendingMessage" class="h-4 w-4" />
+                  <Loader2 v-else class="h-4 w-4 animate-spin" />
+                </button>
+              </form>
+            </section>
           </div>
 
           <!-- ===== Panel aksi (tidak tercetak) ===== -->
@@ -1176,19 +1068,7 @@ const currentYear = new Date().getFullYear();
                 <div
                   class="flex items-start gap-3 rounded-lg border border-slate-700 bg-slate-950/50 px-3.5 py-3"
                 >
-                  <svg
-                    class="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                   <p class="text-xs leading-relaxed text-slate-400">
                     Kasus ini sudah berstatus
                     <span class="font-semibold text-slate-200">{{
@@ -1244,39 +1124,17 @@ const currentYear = new Date().getFullYear();
                           >{{ opt.desc }}</span
                         >
                       </span>
-                      <svg
+                      <Check
                         v-if="form.status === opt.value"
-                        class="h-3.5 w-3.5 shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
+                        class="h-3.5 w-3.5 shrink-0 stroke-[2.5]"
+                      />
                     </button>
                   </div>
                   <p
                     v-if="formErrors.status"
                     class="flex items-center gap-1.5 text-[11px] font-medium text-red-400"
                   >
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-                      />
-                    </svg>
+                    <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                     {{ formErrors.status }}
                   </p>
                 </div>
@@ -1288,19 +1146,9 @@ const currentYear = new Date().getFullYear();
                     >Jenis Tindakan BK</label
                   >
                   <div class="relative">
-                    <svg
+                    <ClipboardList
                       class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                      />
-                    </svg>
+                    />
                     <select
                       id="counselor-action"
                       v-model="form.counselor_action"
@@ -1315,19 +1163,9 @@ const currentYear = new Date().getFullYear();
                         {{ a.label }}
                       </option>
                     </select>
-                    <svg
+                    <ChevronDown
                       class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    />
                   </div>
                 </div>
 
@@ -1344,19 +1182,7 @@ const currentYear = new Date().getFullYear();
                       @click="applyTemplate(tpl.text)"
                       class="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-800 bg-slate-950/50 px-2.5 py-1 text-[11px] font-medium text-slate-400 transition-all duration-150 hover:border-emerald-500/40 hover:text-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
                     >
-                      <svg
-                        class="h-3 w-3"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
+                      <Plus class="h-3 w-3" />
                       {{ tpl.label }}
                     </button>
                   </div>
@@ -1396,37 +1222,13 @@ const currentYear = new Date().getFullYear();
                     v-if="formErrors.handling_notes"
                     class="flex items-center gap-1.5 text-[11px] font-medium text-red-400"
                   >
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-                      />
-                    </svg>
+                    <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                     {{ formErrors.handling_notes }}
                   </p>
                   <p
                     class="flex items-start gap-1.5 text-[10px] leading-relaxed text-slate-500"
                   >
-                    <svg
-                      class="mt-px h-3 w-3 shrink-0 text-emerald-500/70"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
+                    <Lock class="mt-px h-3 w-3 shrink-0 text-emerald-500/70" />
                     Catatan ini tersimpan sebagai dokumentasi rahasia internal
                     BK.
                   </p>
@@ -1460,40 +1262,8 @@ const currentYear = new Date().getFullYear();
                   :disabled="isSubmitting"
                   class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 >
-                  <svg
-                    v-if="!isSubmitting"
-                    class="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <svg
-                    v-else
-                    class="h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    ></path>
-                  </svg>
+                  <Check v-if="!isSubmitting" class="h-4 w-4 stroke-[2]" />
+                  <Loader2 v-else class="h-4 w-4 animate-spin" />
                   {{ isSubmitting ? "Memperbarui..." : "Simpan Tindak Lanjut" }}
                 </button>
               </form>
@@ -1538,19 +1308,7 @@ const currentYear = new Date().getFullYear();
             aria-label="Tutup"
             class="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-950/80 text-slate-400 backdrop-blur-sm transition-colors duration-200 hover:bg-slate-800 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg
-              class="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X class="h-4 w-4" />
           </button>
           <img
             :src="activeAttachmentUrl"

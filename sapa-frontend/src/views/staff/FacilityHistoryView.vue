@@ -4,14 +4,32 @@ import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
 
+/* Import Ikon Lucide */
+import {
+  ArrowLeft,
+  LogOut,
+  Archive,
+  CheckCircle2,
+  XCircle,
+  Search,
+  X,
+  Building2,
+  ChevronDown,
+  Wrench,
+  UserCheck,
+  MapPin,
+  Check,
+  Printer,
+  ArchiveX,
+  ShieldCheck,
+} from 'lucide-vue-next'
+
 const router = useRouter()
 const authStore = useAuthStore()
 
 const logoFailed = ref(false)
 
-/* ---------------------------------- */
-/* Navigasi (behavior existing)       */
-/* ---------------------------------- */
+/* Navigasi */
 const goBack = () => {
   if (window.history.length > 1) {
     router.back()
@@ -20,10 +38,9 @@ const goBack = () => {
   }
 }
 
-const goToQueue = () => router.push('/staff/facility-queue')
 const goToDetail = (id) => router.push(`/staff/facility-reports/${id}`)
 
-/* Logout (behavior existing + tombol kini dirender) */
+/* Logout */
 const handleLogout = async () => {
   if (authStore.logout) {
     await authStore.logout()
@@ -32,14 +49,12 @@ const handleLogout = async () => {
   router.push({ name: 'login' })
 }
 
-/* ---------------------------------- */
-/* State filter (existing) + status   */
-/* ---------------------------------- */
+/* State Filter */
 const searchQuery = ref('')
 const selectedCategory = ref('ALL')
-const selectedStatus = ref('ALL') // tambahan: pil filter status
+const selectedStatus = ref('ALL')
 
-/* Data riwayat (existing, verbatim) */
+/* Data Riwayat */
 const archivedReports = ref([
   {
     id: 104,
@@ -52,7 +67,7 @@ const archivedReports = ref([
     is_anonymous: false,
     resolved_at: '2026-09-10 14:00',
     status: 'Selesai',
-    technician_note: 'Dilakukan penggantian lampu proyektor baru dan pembersihan lensa.'
+    technician_note: 'Dilakukan penggantian lampu proyektor baru dan pembersihan lensa.',
   },
   {
     id: 105,
@@ -65,7 +80,7 @@ const archivedReports = ref([
     is_anonymous: true,
     resolved_at: '2026-09-09 16:10',
     status: 'Ditolak',
-    technician_note: 'Bukan kerusakan fasilitas. Saklar utama hanya dalam kondisi OFF.'
+    technician_note: 'Bukan kerusakan fasilitas. Saklar utama hanya dalam kondisi OFF.',
   },
   {
     id: 98,
@@ -78,7 +93,7 @@ const archivedReports = ref([
     is_anonymous: false,
     resolved_at: '2026-08-28 11:30',
     status: 'Selesai',
-    technician_note: 'Penggantian engsel stainless baru dan penyesuaian posisi kusen.'
+    technician_note: 'Penggantian engsel stainless baru dan penyesuaian posisi kusen.',
   },
   {
     id: 95,
@@ -91,25 +106,32 @@ const archivedReports = ref([
     is_anonymous: false,
     resolved_at: '2026-08-15 09:45',
     status: 'Selesai',
-    technician_note: 'Penggantian bearing dan impeller pompa air.'
-  }
+    technician_note: 'Penggantian bearing dan impeller pompa air.',
+  },
 ])
 
-const categories = ['ALL', 'Elektronik & Kelistrikan', 'Sanitasi & Plambing', 'Bangunan & Mebel', 'Fasilitas Olahraga', 'Lainnya']
+const categories = [
+  'ALL',
+  'Elektronik & Kelistrikan',
+  'Sanitasi & Plambing',
+  'Bangunan & Mebel',
+  'Fasilitas Olahraga',
+  'Lainnya',
+]
 
-/* ---------------------------------- */
-/* Filter (logika existing + status   */
-/* + urut terbaru lebih dulu)         */
-/* ---------------------------------- */
+/* Computed Filter */
 const filteredHistory = computed(() => {
-  const result = archivedReports.value.filter(item => {
-    const matchesSearch = item.ticket_code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          item.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          item.location.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          item.reporter_name.toLowerCase().includes(searchQuery.value.toLowerCase())
+  const result = archivedReports.value.filter((item) => {
+    const matchesSearch =
+      item.ticket_code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      item.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      item.reporter_name.toLowerCase().includes(searchQuery.value.toLowerCase())
 
-    const matchesCategory = selectedCategory.value === 'ALL' || item.category === selectedCategory.value
-    const matchesStatus = selectedStatus.value === 'ALL' || item.status === selectedStatus.value
+    const matchesCategory =
+      selectedCategory.value === 'ALL' || item.category === selectedCategory.value
+    const matchesStatus =
+      selectedStatus.value === 'ALL' || item.status === selectedStatus.value
 
     return matchesSearch && matchesCategory && matchesStatus
   })
@@ -121,23 +143,25 @@ const filteredHistory = computed(() => {
   })
 })
 
-/* ---------------------------------- */
-/* Statistik (computed existing, kini */
-/* dengan resep kartu sistem)         */
-/* ---------------------------------- */
+/* Statistik */
 const totalArchived = computed(() => archivedReports.value.length)
-const totalSuccess = computed(() => archivedReports.value.filter(r => r.status === 'Selesai').length)
-const totalRejected = computed(() => archivedReports.value.filter(r => r.status === 'Ditolak').length)
+const totalSuccess = computed(
+  () => archivedReports.value.filter((r) => r.status === 'Selesai').length
+)
+const totalRejected = computed(
+  () => archivedReports.value.filter((r) => r.status === 'Ditolak').length
+)
 
 const statCards = computed(() => {
-  const pct = (n) => (totalArchived.value > 0 ? Math.round((n / totalArchived.value) * 100) : 0)
+  const pct = (n) =>
+    totalArchived.value > 0 ? Math.round((n / totalArchived.value) * 100) : 0
   return [
     {
       label: 'Total Arsip Laporan',
       value: totalArchived.value,
       caption: 'Terdata dalam basis data sarpras',
       pct: 100,
-      icon: 'M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
+      icon: Archive,
       num: 'text-white',
       tile: 'border-cyan-500/25 bg-cyan-500/10 text-cyan-400',
       bar: 'bg-cyan-500',
@@ -147,7 +171,7 @@ const statCards = computed(() => {
       value: totalSuccess.value,
       caption: `${pct(totalSuccess.value)}% status Selesai / Tuntas`,
       pct: pct(totalSuccess.value),
-      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: CheckCircle2,
       num: 'text-slate-300',
       tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300',
       bar: 'bg-slate-500',
@@ -157,7 +181,7 @@ const statCards = computed(() => {
       value: totalRejected.value,
       caption: `${pct(totalRejected.value)}% tidak valid / di luar wewenang`,
       pct: pct(totalRejected.value),
-      icon: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: XCircle,
       num: 'text-red-400',
       tile: 'border-red-500/25 bg-red-500/10 text-red-400',
       bar: 'bg-red-500',
@@ -165,53 +189,56 @@ const statCards = computed(() => {
   ]
 })
 
-/* ---------------------------------- */
-/* Helper badge — warna diselaraskan  */
-/* sistem (Selesai=slate, Ditolak=red)*/
-/* ---------------------------------- */
+/* Helpers Badges & Meta */
 const getStatusBadge = (status) => {
   switch (status) {
-    case 'Selesai': return 'bg-slate-500/10 text-slate-300 border-slate-500/20'
-    case 'Ditolak': return 'bg-red-500/10 text-red-400 border-red-500/20'
-    default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+    case 'Selesai':
+      return 'bg-slate-500/10 text-slate-300 border-slate-500/20'
+    case 'Ditolak':
+      return 'bg-red-500/10 text-red-400 border-red-500/20'
+    default:
+      return 'bg-slate-500/10 text-slate-400 border-slate-500/20'
   }
 }
 
-/* Badge tingkat kerusakan (existing, kelas diselaraskan) */
 const getDamageLevelBadge = (level) => {
   switch (level) {
-    case 'Berat': return 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-    case 'Sedang': return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-    case 'Ringan': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-    default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+    case 'Berat':
+      return 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+    case 'Sedang':
+      return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+    case 'Ringan':
+      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    default:
+      return 'bg-slate-500/10 text-slate-400 border-slate-500/20'
   }
 }
 
-/* Border indikator tingkat — selalu tampil (bahasa panel staff) */
 const getDamageBorderClass = (level) => {
   switch (level) {
-    case 'Berat': return 'border-l-rose-500'
-    case 'Sedang': return 'border-l-amber-500'
-    case 'Ringan': return 'border-l-emerald-500'
-    default: return 'border-l-slate-700'
+    case 'Berat':
+      return 'border-l-rose-500'
+    case 'Sedang':
+      return 'border-l-amber-500'
+    case 'Ringan':
+      return 'border-l-emerald-500'
+    default:
+      return 'border-l-slate-700'
   }
 }
 
-/* Bar sinyal tingkat kerusakan */
 const getDamageMeta = (level) => {
   const map = {
-    'Berat': { label: 'Berat', level: 3, text: 'text-rose-400', bar: 'bg-rose-500' },
-    'Sedang': { label: 'Sedang', level: 2, text: 'text-amber-400', bar: 'bg-amber-500' },
-    'Ringan': { label: 'Ringan', level: 1, text: 'text-emerald-400', bar: 'bg-emerald-500' },
+    Berat: { label: 'Berat', level: 3, text: 'text-rose-400', bar: 'bg-rose-500' },
+    Sedang: { label: 'Sedang', level: 2, text: 'text-amber-400', bar: 'bg-amber-500' },
+    Ringan: { label: 'Ringan', level: 1, text: 'text-emerald-400', bar: 'bg-emerald-500' },
   }
   return map[level] || map['Ringan']
 }
 
-/* ---------------------------------- */
-/* Pil status + hitungan + reset      */
-/* ---------------------------------- */
+/* Options & Counts */
 const statusOptions = [
-  { value: 'ALL',     label: 'Semua',   active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
+  { value: 'ALL', label: 'Semua', active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
   { value: 'Selesai', label: 'Selesai', active: 'border-slate-600 bg-slate-700/40 text-slate-200' },
   { value: 'Ditolak', label: 'Ditolak', active: 'border-red-500/50 bg-red-500/15 text-red-400' },
 ]
@@ -224,8 +251,8 @@ const statusCounts = computed(() => {
   return counts
 })
 
-const hasActiveFilters = computed(() =>
-  searchQuery.value.trim() !== '' || selectedCategory.value !== 'ALL' || selectedStatus.value !== 'ALL'
+const hasActiveFilters = computed(
+  () => searchQuery.value.trim() !== '' || selectedCategory.value !== 'ALL' || selectedStatus.value !== 'ALL'
 )
 
 const clearFilters = () => {
@@ -234,16 +261,15 @@ const clearFilters = () => {
   selectedStatus.value = 'ALL'
 }
 
-/* Baris siap-render */
 const reportRows = computed(() =>
-  filteredHistory.value.map(item => ({
+  filteredHistory.value.map((item) => ({
     ...item,
     statusBadge: getStatusBadge(item.status),
     damage: getDamageMeta(item.damage_level),
   }))
 )
 
-/* Format 'YYYY-MM-DD HH:mm' */
+/* Formatter */
 const parseDateTime = (d) => {
   if (!d) return null
   const date = new Date(String(d).replace(' ', 'T'))
@@ -252,19 +278,19 @@ const parseDateTime = (d) => {
 
 const formatDate = (d) => {
   const date = parseDateTime(d)
-  return date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (d || '—')
+  return date
+    ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+    : d || '—'
 }
 
 const formatTime = (d) => {
   const date = parseDateTime(d)
-  return date ? date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''
+  return date
+    ? date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    : ''
 }
 
-/* ---------------------------------- */
-/* Cetak Berita Acara (logika         */
-/* existing; subjudul diselaraskan    */
-/* dengan nama resmi sistem)          */
-/* ---------------------------------- */
+/* Cetak Berita Acara */
 const printReport = (item) => {
   const printWindow = window.open('', '_blank', 'height=600,width=800')
   if (!printWindow) {
@@ -345,11 +371,11 @@ const currentYear = new Date().getFullYear()
 
 <template>
   <div class="sapa-root flex min-h-screen flex-col bg-slate-950 font-sans text-slate-100 antialiased selection:bg-emerald-500/25">
-
+    
     <!-- ============ Bar atas ============ -->
     <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
       <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
-
+        
         <!-- Kembali + merek panel -->
         <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <button
@@ -358,9 +384,7 @@ const currentYear = new Date().getFullYear()
             title="Kembali"
             class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <ArrowLeft class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
             <span class="hidden sm:inline">Kembali</span>
           </button>
 
@@ -368,7 +392,7 @@ const currentYear = new Date().getFullYear()
 
           <div class="hidden min-w-0 items-center gap-2.5 sm:flex">
             <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800 ring-1 ring-emerald-500/20">
-              <img v-if="!logoFailed" src="@/assets/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
+              <img v-if="!logoFailed" src="@/assets/logo/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
               <span v-else class="text-sm font-extrabold text-emerald-400">S</span>
             </div>
             <div class="min-w-0">
@@ -381,9 +405,8 @@ const currentYear = new Date().getFullYear()
           </div>
         </div>
 
-        <!-- Aksi akun & navigasi -->
+        <!-- Aksi akun -->
         <div class="flex shrink-0 items-center gap-2">
-
           <div class="hidden h-6 w-px bg-slate-800 sm:block"></div>
 
           <button
@@ -392,9 +415,7 @@ const currentYear = new Date().getFullYear()
             title="Keluar dari akun"
             class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/80 text-slate-500 transition-all duration-200 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
           >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut class="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -435,9 +456,7 @@ const currentYear = new Date().getFullYear()
                 <p class="mt-2 text-3xl font-extrabold tracking-tight tabular-nums" :class="s.num">{{ s.value }}</p>
               </div>
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-transform duration-200 group-hover:scale-110" :class="s.tile">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="s.icon" />
-                </svg>
+                <component :is="s.icon" class="h-5 w-5" />
               </div>
             </div>
             <div class="mt-4">
@@ -468,9 +487,7 @@ const currentYear = new Date().getFullYear()
         <!-- Toolbar filter -->
         <div class="space-y-4 border-b border-slate-800/80 p-4 sm:p-5">
           <div class="relative">
-            <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-            </svg>
+            <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               v-model="searchQuery"
               type="text"
@@ -485,18 +502,14 @@ const currentYear = new Date().getFullYear()
               aria-label="Bersihkan pencarian"
               class="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition-colors duration-150 hover:bg-slate-800 hover:text-slate-200"
             >
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X class="h-3.5 w-3.5" />
             </button>
           </div>
 
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
             <!-- Filter kategori -->
             <div class="relative w-full sm:w-60">
-              <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
+              <Building2 class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <select
                 v-model="selectedCategory"
                 aria-label="Filter kategori"
@@ -505,12 +518,10 @@ const currentYear = new Date().getFullYear()
                 <option value="ALL">Semua Kategori</option>
                 <option v-for="cat in categories.filter(c => c !== 'ALL')" :key="cat" :value="cat" class="bg-slate-900 text-slate-100">{{ cat }}</option>
               </select>
-              <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             </div>
 
-            <!-- Pil status + ringkasan hasil -->
+            <!-- Pil status -->
             <div class="flex flex-wrap items-center gap-2 sm:ml-auto">
               <button
                 v-for="opt in statusOptions"
@@ -537,9 +548,7 @@ const currentYear = new Date().getFullYear()
                 class="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-400 transition-all duration-150 hover:border-cyan-500/40 hover:text-cyan-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
               >
                 Atur ulang
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X class="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -565,7 +574,7 @@ const currentYear = new Date().getFullYear()
             :style="{ animationDelay: (i * 60) + 'ms' }"
             @click="goToDetail(item.id)"
           >
-            <!-- Kolom kasus: badges + judul + catatan teknisi -->
+            <!-- Kolom kasus -->
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="rounded border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-cyan-400">{{ item.ticket_code }}</span>
@@ -581,24 +590,18 @@ const currentYear = new Date().getFullYear()
 
               <h3 class="mt-2 truncate text-sm font-semibold text-slate-100 transition-colors duration-150 group-hover:text-white">{{ item.title }}</h3>
 
-              <!-- Catatan akhir teknisi -->
               <p class="clamp-2 mt-1.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-500">
-                <svg class="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                <Wrench class="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-600" />
                 <span><span class="font-semibold text-slate-400">Catatan akhir:</span> {{ item.technician_note }}</span>
               </p>
             </div>
 
-            <!-- Meta: pelapor, tingkat, lokasi, penyelesaian -->
+            <!-- Meta -->
             <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 xl:contents">
               <!-- Pelapor -->
               <div class="min-w-0">
                 <p v-if="item.is_anonymous" class="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                  <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                  <UserCheck class="h-3.5 w-3.5 shrink-0 text-slate-500" />
                   Anonim
                 </p>
                 <template v-else>
@@ -620,10 +623,7 @@ const currentYear = new Date().getFullYear()
               <!-- Lokasi -->
               <div class="min-w-0">
                 <p class="flex items-center gap-1.5 text-xs text-slate-300">
-                  <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+                  <MapPin class="h-3.5 w-3.5 shrink-0 text-slate-500" />
                   <span class="truncate">{{ item.location }}</span>
                 </p>
               </div>
@@ -631,9 +631,7 @@ const currentYear = new Date().getFullYear()
               <!-- Penyelesaian -->
               <div class="min-w-0">
                 <p class="flex items-center gap-1.5 font-mono text-xs text-slate-400">
-                  <svg class="h-3.5 w-3.5 shrink-0" :class="item.status === 'Selesai' ? 'text-emerald-500/80' : 'text-slate-600'" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <Check class="h-3.5 w-3.5 shrink-0" :class="item.status === 'Selesai' ? 'text-emerald-500/80' : 'text-slate-600'" />
                   {{ formatDate(item.resolved_at) }}
                 </p>
                 <p class="mt-0.5 pl-5 text-[10px] text-slate-600">{{ item.status === 'Selesai' ? 'Tuntas' : 'Ditutup' }} · {{ formatTime(item.resolved_at) }}</p>
@@ -650,15 +648,12 @@ const currentYear = new Date().getFullYear()
                 Detail
               </button>
 
-              <!-- Cetak Berita Acara -->
               <button
                 type="button"
                 @click.stop="printReport(item)"
                 class="inline-flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 transition-all duration-150 hover:bg-emerald-500 hover:text-slate-950 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 sm:w-auto"
               >
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z" />
-                </svg>
+                <Printer class="h-3.5 w-3.5" />
                 Cetak BA
               </button>
             </div>
@@ -668,12 +663,8 @@ const currentYear = new Date().getFullYear()
         <!-- Keadaan kosong -->
         <div v-else class="flex flex-col items-center px-6 py-16 text-center">
           <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400">
-            <svg v-if="hasActiveFilters" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-            </svg>
-            <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-            </svg>
+            <Search v-if="hasActiveFilters" class="h-6 w-6" />
+            <ArchiveX v-else class="h-6 w-6" />
           </div>
           <p class="mt-4 text-sm font-semibold text-slate-200">
             {{ hasActiveFilters ? 'Arsip tidak ditemukan' : 'Belum ada riwayat perbaikan' }}
@@ -697,9 +688,7 @@ const currentYear = new Date().getFullYear()
         <!-- Kaki daftar -->
         <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 sm:px-6">
           <p class="flex items-center gap-1.5 text-[11px] text-slate-600">
-            <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+            <ShieldCheck class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
             Setiap penyelesaian dapat diterbitkan sebagai Berita Acara resmi untuk arsip sekolah
           </p>
           <p class="whitespace-nowrap text-[11px] text-slate-600">{{ totalArchived }} tiket terdokumentasi</p>
@@ -718,7 +707,6 @@ const currentYear = new Date().getFullYear()
 </template>
 
 <style>
-/* Inter sebagai identitas tipografi (aman dihapus jika sudah dikonfigurasi di Tailwind) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 .sapa-root {
@@ -727,7 +715,6 @@ const currentYear = new Date().getFullYear()
 </style>
 
 <style scoped>
-/* Entrance seksi: fade-up halus dengan stagger */
 .fade-up {
   opacity: 0;
   animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -738,7 +725,6 @@ const currentYear = new Date().getFullYear()
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Entrance baris: hanya opacity — interaksi hover tetap bekerja */
 .card-enter {
   opacity: 0;
   animation: card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -749,7 +735,6 @@ const currentYear = new Date().getFullYear()
   to   { opacity: 1; }
 }
 
-/* Bar statistik tumbuh dari kiri saat mount */
 .stat-bar {
   transform-origin: left center;
   animation: grow-x 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
@@ -760,7 +745,6 @@ const currentYear = new Date().getFullYear()
   to   { transform: scaleX(1); }
 }
 
-/* Batasi catatan teknisi pada 2 baris */
 .clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
