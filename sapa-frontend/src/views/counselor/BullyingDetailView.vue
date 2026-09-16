@@ -122,8 +122,70 @@ async function loadReport() {
   }
 }
 
+const comments = ref([])
+const newMessage = ref('')
+const isSendingMessage = ref(false)
+const isLoadingComments = ref(true)
+
+async function loadComments() {
+  isLoadingComments.value = true
+  try {
+    const data = await reportService.getComments(reportId)
+    comments.value = (data.data ?? data).map((c) => ({
+      id: c.id,
+      text: c.comment,
+      authorName: c.author?.name ?? 'Anonim',
+      isCounselor: c.author?.role === 'counselor',
+      isMine: c.is_mine,
+      createdAt: new Date(c.created_at).toLocaleString('id-ID', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }),
+    }))
+  } catch {
+    toast.error('Gagal memuat percakapan.')
+  } finally {
+    isLoadingComments.value = false
+  }
+}
+
+async function handleSendMessage() {
+  if (!newMessage.value.trim() || isSendingMessage.value) return
+
+  isSendingMessage.value = true
+  try {
+    const data = await reportService.addComment(reportId, newMessage.value.trim())
+    const c = data.comment
+    comments.value.push({
+      id: c.id,
+      text: c.comment,
+      authorName: c.author?.name ?? 'Anda',
+      isCounselor: c.author?.role === 'counselor',
+      isMine: true,
+      createdAt: new Date(c.created_at).toLocaleString('id-ID', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }),
+    })
+    newMessage.value = ''
+  } catch (error) {
+    toast.error(error?.response?.data?.message || 'Gagal mengirim pesan.')
+  } finally {
+    isSendingMessage.value = false
+  }
+}
+
+const initialsShort = (name) => {
+  if (!name || typeof name !== 'string') return '?'
+  const parts = name.trim().split(/\s+/)
+  return parts.length > 1
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase()
+}
+
 onMounted(() => {
   loadReport();
+  loadComments();
   window.addEventListener("keydown", handleEscKey);
 });
 
@@ -1013,6 +1075,74 @@ const currentYear = new Date().getFullYear();
                 Jejak audit tidak dapat diubah setelah tercatat
               </p>
             </section>
+
+            <!-- ===== Percakapan dengan Pelapor ===== -->
+<section class="print-card fade-up overflow-hidden rounded-xl border border-slate-800 bg-slate-900" style="animation-delay: 120ms">
+  <div class="flex items-center justify-between gap-3 border-b border-slate-800/70 px-5 py-4 sm:px-6">
+    <div class="flex items-center gap-2.5">
+      <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+      <div>
+        <h2 class="text-sm font-bold tracking-tight text-slate-100">Percakapan dengan Pelapor</h2>
+        <p class="mt-0.5 text-[11px] text-slate-500">Komunikasi dua arah terkait penanganan kasus</p>
+      </div>
+    </div>
+    <span class="whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">{{ comments.length }} Pesan</span>
+  </div>
+
+  <div class="max-h-96 space-y-3 overflow-y-auto px-5 py-5 sm:px-6">
+    <div v-if="isLoadingComments" class="space-y-3">
+      <div v-for="i in 3" :key="i" class="h-14 rounded-lg bg-slate-800/50 animate-pulse"></div>
+    </div>
+
+    <p v-else-if="comments.length === 0" class="py-6 text-center text-xs text-slate-500">
+      Belum ada percakapan. Kirim pesan untuk memulai komunikasi dengan pelapor.
+    </p>
+
+    <div
+      v-for="msg in comments"
+      :key="msg.id"
+      class="flex gap-2.5"
+      :class="msg.isMine ? 'flex-row-reverse' : ''"
+    >
+      <div
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+        :class="msg.isCounselor ? 'bg-emerald-500 text-slate-950' : 'border border-slate-600 bg-slate-700 text-slate-200'"
+      >
+        {{ initialsShort(msg.authorName) }}
+      </div>
+
+      <div class="max-w-[75%] rounded-lg px-3.5 py-2.5" :class="msg.isMine ? 'bg-emerald-500/15 border border-emerald-500/25' : 'bg-slate-800/60 border border-slate-700'">
+        <p class="text-[10px] font-semibold" :class="msg.isMine ? 'text-emerald-400' : 'text-slate-300'">{{ msg.authorName }}</p>
+        <p class="mt-1 text-xs leading-relaxed text-slate-200 whitespace-pre-line">{{ msg.text }}</p>
+        <p class="mt-1 text-[9px] text-slate-500">{{ msg.createdAt }}</p>
+      </div>
+    </div>
+  </div>
+
+  <form @submit.prevent="handleSendMessage" class="flex items-center gap-2.5 border-t border-slate-800/70 bg-slate-950/30 p-4 sm:px-6">
+    <input
+      v-model="newMessage"
+      type="text"
+      placeholder="Tulis pesan untuk pelapor..."
+      class="flex-1 rounded-lg border border-slate-800 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+    />
+    <button
+      type="submit"
+      :disabled="isSendingMessage || !newMessage.trim()"
+      class="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <svg v-if="!isSendingMessage" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+      </svg>
+      <svg v-else class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      </svg>
+    </button>
+  </form>
+</section>
           </div>
 
           <!-- ===== Panel aksi (tidak tercetak) ===== -->
