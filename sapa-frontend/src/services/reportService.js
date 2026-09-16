@@ -97,4 +97,10 @@ export default {
     const { data } = await api.post(`/api/aspirations/${reportId}/upvote`)
     return data
   },
+
+  // Admin
+  async getAdminAnalytics() {
+    const { data } = await api.get('/api/admin/dashboard/analytics')
+    return data
+  },
 };

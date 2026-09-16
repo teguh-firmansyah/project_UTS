@@ -91,6 +91,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/users/{user}/toggle-active', [UserManagementController::class, 'toggleActive']);
         Route::post('/users/{user}/assign-role', [UserManagementController::class, 'assignRole']);
         Route::post('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword']);
+
+        Route::get('/dashboard/bullying-metadata', [DashboardController::class, 'bullyingMetadata']);
     });
 
     /*
