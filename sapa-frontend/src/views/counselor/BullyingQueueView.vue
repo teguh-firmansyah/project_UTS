@@ -266,7 +266,7 @@ const currentYear = new Date().getFullYear()
       <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
         <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800 ring-1 ring-emerald-500/20">
-            <img v-if="!logoFailed" src="@/assets/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
+            <img v-if="!logoFailed" src="@/assets/logo/logo sapa.jpeg" alt="Logo SAPA" class="h-full w-full object-cover" @error="logoFailed = true" />
             <span v-else class="text-sm font-extrabold text-emerald-400">S</span>
           </div>
           <div class="hidden min-w-0 sm:block">

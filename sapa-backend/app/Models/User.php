@@ -68,6 +68,11 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
+    public function votes(): HasMany
+    {
+        return $this->hasMany(AspirationVote::class);
+    }
+
     // Helper role check, dipakai di Policy
     public function isCounselor(): bool
     {

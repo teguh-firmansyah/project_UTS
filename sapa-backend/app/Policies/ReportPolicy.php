@@ -20,56 +20,46 @@ class ReportPolicy
         ]);
     }
 
-    /**
-     * Boleh lihat DETAIL laporan tertentu.
-     * Ini titik paling kritis — logic berbeda total untuk tipe bullying.
-     */
     public function view(User $user, Report $report): bool
-    {
-        // Kasus khusus: laporan bullying
-        if ($report->type === 'bullying') {
-            return $this->canAccessBullyingDetail($user, $report);
-        }
-
-        // Pemilik laporan (kalau bukan anonim) selalu boleh lihat laporannya sendiri
-        if (! $report->is_anonymous && $report->reporter_id === $user->id) {
-            return true;
-        }
-
-        // Aspirasi publik boleh dilihat semua siswa
-        if ($report->type === 'aspiration') {
-            return $user->hasPermissionTo('aspiration.view_public');
-        }
-
-        // Fasilitas: staff/admin dengan permission view_all
-        if ($report->type === 'facility') {
-            return $user->hasPermissionTo('facility.view_all')
-                || $report->reporter_id === $user->id;
-        }
-
-        return false;
+{
+    // Kasus khusus: laporan bullying
+    if ($report->type === 'bullying') {
+        return $this->canAccessBullyingDetail($user, $report);
     }
 
-    /**
-     * Aturan eksplisit khusus akses detail bullying —
-     * dipisah jadi method sendiri supaya jelas dan gampang diaudit.
-     */
+    // PERBAIKAN: Pemilik laporan SELALU boleh lihat laporannya sendiri (termasuk jika anonim)
+    if ($report->reporter_id === $user->id) {
+        return true;
+    }
+
+    // Aspirasi publik boleh dilihat semua siswa
+    if ($report->type === 'aspiration') {
+        return $user->hasPermissionTo('aspiration.view_public');
+    }
+
+    // Fasilitas: staff/admin dengan permission view_all
+    if ($report->type === 'facility') {
+        return $user->hasPermissionTo('facility.view_all');
+    }
+
+    return false;
+}
+
     public function canAccessBullyingDetail(User $user, Report $report): bool
-    {
-        // Hanya counselor dengan permission bullying.handle
-        if ($user->hasPermissionTo('bullying.handle')) {
-            return true;
-        }
-
-        // Pelapor sendiri boleh lihat status laporannya SENDIRI
-        // (tapi ini dikontrol lagi di Resource — tidak semua field boleh keluar)
-        if (! $report->is_anonymous && $report->reporter_id === $user->id) {
-            return true;
-        }
-
-        // Admin biasa TIDAK termasuk di sini — sengaja tidak diberi akses
-        return false;
+{
+    // Hanya counselor dengan permission bullying.handle
+    if ($user->hasPermissionTo('bullying.handle')) {
+        return true;
     }
+
+    // PERBAIKAN: Pelapor sendiri SELALU boleh lihat status laporannya SENDIRI
+    if ($report->reporter_id === $user->id) {
+        return true;
+    }
+
+    // Admin biasa TIDAK termasuk di sini
+    return false;
+}
 
     /**
      * Semua yang punya permission report.create boleh membuat laporan.

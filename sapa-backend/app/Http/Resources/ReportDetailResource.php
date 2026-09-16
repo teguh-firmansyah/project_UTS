@@ -16,32 +16,34 @@ class ReportDetailResource extends JsonResource
             'report_code' => $this->report_code,
             'type' => $this->type,
             'title' => $this->title,
-            'description' => $this->description, // full, karena sudah lolos authorize
+            'description' => $this->description,
             'status' => $this->status,
             'priority' => $this->priority,
-            'is_anonymous' => $this->is_anonymous,
+            'is_anonymous' => (bool) $this->is_anonymous,
 
+            // Pelapor dimuat HANYA JIKA TIDAK ANONIM
             'reporter' => $this->when(
                 ! $this->is_anonymous && $this->relationLoaded('reporter') && $this->reporter,
                 fn() => [
                     'id' => $this->reporter->id,
                     'name' => $this->reporter->name,
-                    'class_name' => $this->reporter->class_name,
+                    'class_name' => $this->reporter->class_name ?? '-',
                 ]
             ),
 
             'assignee' => $this->when(
                 $this->relationLoaded('assignee') && $this->assignee,
-                fn() => ['id' => $this->assignee->id, 'name' => $this->assignee->name]
+                fn() => [
+                    'id' => $this->assignee->id,
+                    'name' => $this->assignee->name
+                ]
             ),
 
-            // Detail per tipe — bullying DIJAGA LAGI DI SINI sebagai lapis terakhir,
-            // bukan hanya mengandalkan authorize() di controller
             'detail' => $this->getTypeDetail($user),
 
             'attachments' => AttachmentResource::collection($this->whenLoaded('attachments')),
             'status_logs' => StatusLogResource::collection($this->whenLoaded('statusLogs')),
-            'comments_count' => $this->when($this->comments_count !== null, $this->comments_count),
+            'comments_count' => $this->when($this->comments_count !== null, (int) $this->comments_count),
 
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
@@ -49,19 +51,14 @@ class ReportDetailResource extends JsonResource
         ];
     }
 
-    /**
-     * Lapis pertahanan TERAKHIR untuk data bullying — bahkan kalau suatu saat
-     * ada bug di Policy/middleware yang lolos, resource ini tetap menyaring
-     * berdasarkan permission user secara langsung.
-     */
     protected function getTypeDetail($user): ?array
     {
         return match ($this->type) {
             'aspiration' => $this->relationLoaded('aspirationDetail') && $this->aspirationDetail
                 ? [
                     'category' => $this->aspirationDetail->category,
-                    'upvotes_count' => $this->aspirationDetail->upvotes_count,
-                    'is_public' => $this->aspirationDetail->is_public,
+                    'upvotes_count' => $this->aspirationDetail->upvotes_count ?? 0,
+                    'is_public' => (bool) ($this->aspirationDetail->is_public ?? true),
                 ]
                 : null,
 
@@ -81,24 +78,31 @@ class ReportDetailResource extends JsonResource
 
     protected function getBullyingDetailIfAuthorized($user): ?array
     {
-        if (! $this->relationLoaded('bullyingDetail') || ! $this->bullyingDetail) {
+        if (! $user || ! $this->relationLoaded('bullyingDetail') || ! $this->bullyingDetail) {
             return null;
         }
 
-        // Guard eksplisit di layer Resource — pertahanan berlapis, bukan mengulang Policy
+        // PERBAIKAN 1: Pemilik laporan (reporter_id) SELALU dianggap owner, walau laporannya anonim
         $isCounselor = $user->hasPermissionTo('bullying.handle');
-        $isOwner = ! $this->is_anonymous && $this->reporter_id === $user->id;
+        $isOwner = $this->reporter_id === $user->id;
 
         if (! $isCounselor && ! $isOwner) {
-            return null; // fail-safe: kalau ragu, jangan tampilkan
+            return null;
+        }
+
+        // PERBAIKAN 2: Proteksi jika incident_date bertipe string / Carbon / null
+        $incidentDate = $this->bullyingDetail->incident_date;
+        if ($incidentDate instanceof \DateTimeInterface) {
+            $formattedDate = $incidentDate->format('Y-m-d');
+        } else {
+            $formattedDate = $incidentDate ? (string) $incidentDate : null;
         }
 
         $detail = [
             'reporter_relation' => $this->bullyingDetail->reporter_relation,
-            'incident_date' => $this->bullyingDetail->incident_date?->toDateString(),
+            'incident_date' => $formattedDate,
         ];
 
-        // handling_notes HANYA untuk counselor, siswa pemilik tidak perlu lihat catatan internal BK
         if ($isCounselor) {
             $detail['handling_notes'] = $this->bullyingDetail->handling_notes;
             $detail['handled_by'] = $this->bullyingDetail->counselor?->name;

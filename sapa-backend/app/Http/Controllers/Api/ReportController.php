@@ -24,6 +24,11 @@ class ReportController extends Controller
             $query->where('type', 'bullying');
         }
 
+        // BARU — filter tipe, dipakai halaman profil siswa
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
         // Load detail per-tipe TAPI tidak untuk bullying (dijaga di getTypeMeta)
         $query->with(['aspirationDetail', 'facilityDetail']);
 
@@ -37,6 +42,7 @@ class ReportController extends Controller
         $this->authorize('view', $report);
 
         $report->loadTypeDetail();
+
         $report->load([
             'reporter:id,name,class_name',
             'assignee:id,name',
@@ -94,5 +100,47 @@ class ReportController extends Controller
         ]);
 
         return response()->json($report->fresh()->load('assignee:id,name'));
+    }
+
+    /**
+     * Mengambil daftar laporan khusus milik user yang sedang login (Siswa).
+     */
+    public function myReports(Request $request)
+    {
+        $user = $request->user();
+
+        $reports = Report::query()
+            ->where('reporter_id', $user->id)
+            ->latest()
+            ->paginate($request->get('per_page', 10));
+
+        return ReportResource::collection($reports);
+    }
+
+    /**
+     * Mengambil statistik ringkasan status laporan milik user yang sedang login.
+     */
+    public function myStats(Request $request)
+    {
+        $user = $request->user();
+
+        $stats = Report::query()
+            ->where('reporter_id', $user->id)
+            ->selectRaw("
+                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN status = 'reviewing' THEN 1 END) as reviewing,
+                COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
+                COUNT(CASE WHEN status = 'resolved' THEN 1 END) as resolved,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
+            ")
+            ->first();
+
+        return response()->json([
+            'pending'     => (int) $stats->pending,
+            'reviewing'   => (int) $stats->reviewing,
+            'in_progress' => (int) $stats->in_progress,
+            'resolved'    => (int) $stats->resolved,
+            'rejected'    => (int) $stats->rejected,
+        ]);
     }
 }

@@ -33,6 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
 
     // ================= REPORTS (umum, dicek Policy per-request) =================
+    Route::get('/my-reports', [ReportController::class, 'myReports']);
+    Route::get('/my-reports/stats', [ReportController::class, 'myStats']);
+
     Route::get('/reports', [ReportController::class, 'index']);          // list, filtered by role di controller
     Route::get('/reports/{report}', [ReportController::class, 'show']);  // detail, authorize('view') di dalamnya
     Route::patch('/reports/{report}', [ReportController::class, 'update']); // edit sebelum diproses (pemilik)
