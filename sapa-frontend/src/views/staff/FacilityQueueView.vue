@@ -3,13 +3,31 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
+import {
+  LogOut,
+  History,
+  User,
+  Check,
+  CheckCircle2,
+  Building2,
+  Wrench,
+  ClipboardCheck,
+  Search,
+  X,
+  ChevronDown,
+  MapPin,
+  Lock,
+  ChevronRight,
+  ShieldCheck,
+  Image as ImageIcon
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const logoFailed = ref(false)
 
-/* Inisial nama staff untuk avatar (existing) */
+/* Inisial nama staff untuk avatar */
 const initials = computed(() => {
   const name = authStore.user?.name || 'Staff Fasilitas'
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -25,7 +43,7 @@ const greeting = computed(() => {
   return 'Selamat malam'
 })
 
-/* Logout (behavior existing + umpan balik toast) */
+/* Logout */
 const handleLogout = async () => {
   if (authStore.logout) {
     await authStore.logout()
@@ -35,14 +53,14 @@ const handleLogout = async () => {
 }
 
 /* ---------------------------------- */
-/* State filter & pencarian (existing)*/
+/* State filter & pencarian           */
 /* ---------------------------------- */
 const searchQuery = ref('')
 const selectedStatus = ref('ALL')
 const selectedCategory = ref('ALL')
 const selectedDamageLevel = ref('ALL')
 
-/* Data laporan fasilitas (existing, verbatim) */
+/* Data laporan fasilitas */
 const reports = ref([
   {
     id: 101,
@@ -111,12 +129,12 @@ const reports = ref([
   }
 ])
 
-/* Opsi filter (existing) */
+/* Opsi filter */
 const categories = ['ALL', 'Elektronik & Kelistrikan', 'Sanitasi & Plambing', 'Bangunan & Mebel', 'Fasilitas Olahraga', 'Lainnya']
 const damageLevels = ['ALL', 'Ringan', 'Sedang', 'Berat']
 
 /* ---------------------------------- */
-/* Filter + urutan (logika existing)  */
+/* Filter + urutan                    */
 /* ---------------------------------- */
 const filteredReports = computed(() => {
   return reports.value.filter(item => {
@@ -133,14 +151,13 @@ const filteredReports = computed(() => {
 
     return matchesSearch && matchesStatus && matchesCategory && matchesLevel
   }).sort((a, b) => {
-    // Priority sorting: Berat > Sedang > Ringan (existing)
     const levelWeight = { 'Berat': 3, 'Sedang': 2, 'Ringan': 1 }
     return (levelWeight[b.damage_level] || 0) - (levelWeight[a.damage_level] || 0)
   })
 })
 
 /* ---------------------------------- */
-/* Statistik (computed existing)      */
+/* Statistik                          */
 /* ---------------------------------- */
 const totalPending = computed(() => reports.value.filter(r => r.status === 'Menunggu').length)
 const totalInReview = computed(() => reports.value.filter(r => r.status === 'Ditinjau' || r.status === 'Diproses').length)
@@ -158,7 +175,7 @@ const activeSummary = computed(() => {
   return parts.join(' · ')
 })
 
-/* Kartu statistik — pola identik dengan dashboard siswa & BK */
+/* Kartu statistik dengan ikon Lucide Vue Next */
 const statCards = computed(() => {
   const total = reports.value.length
   const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0)
@@ -168,7 +185,7 @@ const statCards = computed(() => {
       value: total,
       caption: 'Seluruh laporan kerusakan fasilitas',
       pct: 100,
-      icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+      icon: Building2,
       num: 'text-white',
       tile: 'border-cyan-500/25 bg-cyan-500/10 text-cyan-400',
       bar: 'bg-cyan-500',
@@ -178,7 +195,7 @@ const statCards = computed(() => {
       value: totalPending.value,
       caption: 'Laporan baru berstatus Menunggu',
       pct: pct(totalPending.value),
-      icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+      icon: Search,
       num: 'text-amber-400',
       tile: 'border-amber-500/25 bg-amber-500/10 text-amber-400',
       bar: 'bg-amber-500',
@@ -189,7 +206,7 @@ const statCards = computed(() => {
       value: totalInReview.value,
       caption: 'Sedang ditinjau / pengerjaan teknisi',
       pct: pct(totalInReview.value),
-      icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+      icon: Wrench,
       num: 'text-emerald-400',
       tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
       bar: 'bg-emerald-500',
@@ -199,7 +216,7 @@ const statCards = computed(() => {
       value: totalResolved.value,
       caption: 'Fasilitas tuntas diperbaiki',
       pct: pct(totalResolved.value),
-      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: CheckCircle2,
       num: 'text-slate-300',
       tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300',
       bar: 'bg-slate-500',
@@ -207,12 +224,7 @@ const statCards = computed(() => {
   ]
 })
 
-/* ---------------------------------- */
-/* Helper badge — warna diselaraskan  */
-/* sistem (Menunggu=amber, Ditinjau=  */
-/* blue, Diproses=emerald, Selesai=   */
-/* slate, Ditolak=red)                */
-/* ---------------------------------- */
+/* Helper badge */
 const getStatusBadge = (status) => {
   switch (status) {
     case 'Menunggu': return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -224,7 +236,6 @@ const getStatusBadge = (status) => {
   }
 }
 
-/* Badge tingkat kerusakan (existing, kelas diselaraskan) */
 const getDamageLevelBadge = (level) => {
   switch (level) {
     case 'Berat': return 'bg-rose-500/10 text-rose-400 border-rose-500/20'
@@ -234,7 +245,6 @@ const getDamageLevelBadge = (level) => {
   }
 }
 
-/* Border indikator tingkat kerusakan (existing, tetap dipakai) */
 const getDamageBorderClass = (level) => {
   switch (level) {
     case 'Berat': return 'border-l-rose-500'
@@ -244,7 +254,6 @@ const getDamageBorderClass = (level) => {
   }
 }
 
-/* Bar sinyal tingkat kerusakan — bahasa prioritas sistem */
 const getDamageMeta = (level) => {
   const map = {
     'Berat': { label: 'Berat', level: 3, text: 'text-rose-400', bar: 'bg-rose-500' },
@@ -254,9 +263,7 @@ const getDamageMeta = (level) => {
   return map[level] || map['Ringan']
 }
 
-/* ---------------------------------- */
-/* Pil status + hitungan              */
-/* ---------------------------------- */
+/* Pil status */
 const statusOptions = [
   { value: 'ALL',      label: 'Semua',     active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
   { value: 'Menunggu', label: 'Menunggu',  active: 'border-amber-500/50 bg-amber-500/15 text-amber-400' },
@@ -286,7 +293,6 @@ const clearFilters = () => {
   selectedDamageLevel.value = 'ALL'
 }
 
-/* Baris siap-render dengan badge ter-prakomputasi */
 const reportRows = computed(() =>
   filteredReports.value.map(item => ({
     ...item,
@@ -295,7 +301,6 @@ const reportRows = computed(() =>
   }))
 )
 
-/* Format 'YYYY-MM-DD HH:mm' */
 const parseDateTime = (d) => {
   if (!d) return null
   const date = new Date(String(d).replace(' ', 'T'))
@@ -314,7 +319,6 @@ const formatTime = (d) => {
 
 const goToDetail = (id) => router.push(`/staff/facility-reports/${item => item}`.replace('/item => item/', `${id}`))
 
-/* Placeholder foto — ganti dengan aset sekolah bila tersedia */
 const heroPhoto = 'https://picsum.photos/seed/sapasarpras/1600/900.jpg'
 const currentYear = new Date().getFullYear()
 </script>
@@ -348,9 +352,7 @@ const currentYear = new Date().getFullYear()
             title="Lihat Riwayat Selesai"
             class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg class="h-4 w-4 text-slate-500 transition-colors duration-200 group-hover:text-slate-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-            </svg>
+            <History class="h-4 w-4 text-slate-500 transition-colors duration-200 group-hover:text-slate-300" />
             <span class="hidden sm:inline">Riwayat Fasilitas</span>
             <span class="sm:hidden">Riwayat</span>
           </router-link>
@@ -377,9 +379,7 @@ const currentYear = new Date().getFullYear()
             title="Keluar dari akun"
             class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/80 text-slate-500 transition-all duration-200 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
           >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut class="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -390,7 +390,6 @@ const currentYear = new Date().getFullYear()
 
       <!-- ===== Hero panel sarpras ===== -->
       <section class="fade-up relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-        <!-- Foto latar: lingkungan sekolah, digelapkan & desaturasi -->
         <img :src="heroPhoto" alt="" aria-hidden="true" draggable="false"
              class="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-20 grayscale contrast-125 brightness-[.65]" />
         <div class="pointer-events-none absolute inset-0 bg-slate-950/60" aria-hidden="true"></div>
@@ -439,9 +438,7 @@ const currentYear = new Date().getFullYear()
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Petugas Sarpras</p>
                 <span class="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
-                  </svg>
+                  <Check class="h-3 w-3" />
                   Terverifikasi
                 </span>
               </div>
@@ -462,10 +459,7 @@ const currentYear = new Date().getFullYear()
                   <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Tiket Aktif</p>
                   <p class="mt-1 text-lg font-extrabold leading-none tabular-nums text-white">{{ activeTickets }}</p>
                 </div>
-                <svg class="h-5 w-5 text-slate-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                <Wrench class="h-5 w-5 text-slate-600" />
               </div>
             </aside>
           </div>
@@ -474,9 +468,7 @@ const currentYear = new Date().getFullYear()
           <div class="grid grid-cols-1 gap-4 border-t border-slate-800/70 pt-5 sm:grid-cols-3 sm:gap-6">
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
+                <ShieldCheck class="h-4 w-4 text-emerald-400" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Prioritas Otomatis</p>
@@ -486,9 +478,7 @@ const currentYear = new Date().getFullYear()
 
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.056 3.056-2.975-2.975 3.056-3.056a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.958l-3.27 2.752" />
-                </svg>
+                <Wrench class="h-4 w-4 text-emerald-400" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Koordinasi Teknisi</p>
@@ -498,9 +488,7 @@ const currentYear = new Date().getFullYear()
 
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
+                <ClipboardCheck class="h-4 w-4 text-emerald-400" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Dokumentasi Transparan</p>
@@ -539,9 +527,7 @@ const currentYear = new Date().getFullYear()
                 <p class="mt-2 text-3xl font-extrabold tracking-tight tabular-nums" :class="s.num">{{ s.value }}</p>
               </div>
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-transform duration-200 group-hover:scale-110" :class="s.tile">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="s.icon" />
-                </svg>
+                <component :is="s.icon" class="h-5 w-5" />
               </div>
             </div>
             <div class="mt-4">
@@ -572,9 +558,7 @@ const currentYear = new Date().getFullYear()
             <div class="flex flex-col gap-3 sm:flex-row">
               <!-- Pencarian -->
               <div class="relative flex-1">
-                <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-                </svg>
+                <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
                   v-model="searchQuery"
                   type="text"
@@ -589,17 +573,13 @@ const currentYear = new Date().getFullYear()
                   aria-label="Bersihkan pencarian"
                   class="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition-colors duration-150 hover:bg-slate-800 hover:text-slate-200"
                 >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X class="h-3.5 w-3.5" />
                 </button>
               </div>
 
               <!-- Filter kategori -->
               <div class="relative w-full sm:w-56">
-                <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+                <Building2 class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <select
                   v-model="selectedCategory"
                   aria-label="Filter kategori"
@@ -608,16 +588,12 @@ const currentYear = new Date().getFullYear()
                   <option value="ALL">Semua Kategori</option>
                   <option v-for="cat in categories.filter(c => c !== 'ALL')" :key="cat" :value="cat" class="bg-slate-900 text-slate-100">{{ cat }}</option>
                 </select>
-                <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
+                <ChevronDown class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               </div>
 
               <!-- Filter tingkat kerusakan -->
               <div class="relative w-full sm:w-52">
-                <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
+                <Wrench class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <select
                   v-model="selectedDamageLevel"
                   aria-label="Filter tingkat kerusakan"
@@ -626,9 +602,7 @@ const currentYear = new Date().getFullYear()
                   <option value="ALL">Semua Kerusakan</option>
                   <option v-for="lvl in damageLevels.filter(l => l !== 'ALL')" :key="lvl" :value="lvl" class="bg-slate-900 text-slate-100">Kerusakan {{ lvl }}</option>
                 </select>
-                <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
+                <ChevronDown class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               </div>
             </div>
 
@@ -659,15 +633,13 @@ const currentYear = new Date().getFullYear()
                   class="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-400 transition-all duration-150 hover:border-cyan-500/40 hover:text-cyan-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
                 >
                   Atur ulang
-                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X class="h-3 w-3" />
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Label kolom (desktop lebar) -->
+          <!-- Label kolom -->
           <div class="hidden border-b border-slate-800/70 bg-slate-950/50 px-5 py-2.5 sm:px-6 xl:grid xl:grid-cols-[minmax(0,1.5fr)_180px_125px_100px_90px_150px] xl:gap-x-4">
             <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Kerusakan</p>
             <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Lokasi</p>
@@ -691,15 +663,12 @@ const currentYear = new Date().getFullYear()
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="rounded border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-cyan-400">{{ item.ticket_code }}</span>
-                  <!-- Badge tingkat: hanya tampil saat ditumpuk (kolom Tingkat ada di xl) -->
                   <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold xl:hidden" :class="getDamageLevelBadge(item.damage_level)">Tingkat {{ item.damage_level }}</span>
                   <span class="hidden items-center gap-1 rounded-full border border-slate-800 bg-slate-950/50 px-2 py-0.5 text-[10px] font-medium text-slate-400 sm:inline-flex">
                     {{ item.category }}
                   </span>
                   <span v-if="item.photos_count" class="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-950/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                    <ImageIcon class="h-3 w-3" />
                     {{ item.photos_count }} Foto
                   </span>
                 </div>
@@ -707,15 +676,12 @@ const currentYear = new Date().getFullYear()
                 <p class="mt-0.5 text-[10px] text-slate-600">Dilaporkan {{ formatDate(item.created_at) }} · {{ formatTime(item.created_at) }}</p>
               </div>
 
-              <!-- Meta: lokasi, pelapor, tingkat, status -->
+              <!-- Meta -->
               <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 xl:contents">
                 <!-- Lokasi -->
                 <div class="min-w-0">
                   <p class="flex items-center gap-1.5 text-xs font-medium text-slate-300">
-                    <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+                    <MapPin class="h-3.5 w-3.5 shrink-0 text-slate-500" />
                     <span class="truncate">{{ item.location }}</span>
                   </p>
                 </div>
@@ -723,9 +689,7 @@ const currentYear = new Date().getFullYear()
                 <!-- Pelapor -->
                 <div class="min-w-0">
                   <p v-if="item.is_anonymous" class="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                    <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+                    <Lock class="h-3.5 w-3.5 shrink-0 text-slate-500" />
                     Anonim
                   </p>
                   <template v-else>
@@ -761,9 +725,7 @@ const currentYear = new Date().getFullYear()
                   class="inline-flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700 bg-slate-800/50 px-3.5 py-2 text-xs font-semibold text-slate-300 transition-all duration-150 hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 sm:w-auto"
                 >
                   Tinjau &amp; Tangani
-                  <svg class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
+                  <ChevronRight class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
                 </button>
               </div>
             </article>
@@ -772,12 +734,8 @@ const currentYear = new Date().getFullYear()
           <!-- Keadaan kosong -->
           <div v-else class="flex flex-col items-center px-6 py-16 text-center">
             <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400">
-              <svg v-if="hasActiveFilters" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-              </svg>
-              <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+              <Search v-if="hasActiveFilters" class="h-6 w-6" />
+              <ShieldCheck v-else class="h-6 w-6" />
             </div>
             <p class="mt-4 text-sm font-semibold text-slate-200">
               {{ hasActiveFilters ? 'Laporan tidak ditemukan' : 'Tidak ada laporan kerusakan' }}
@@ -801,9 +759,7 @@ const currentYear = new Date().getFullYear()
           <!-- Kaki daftar -->
           <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 sm:px-6">
             <p class="flex items-center gap-1.5 text-[11px] text-slate-600">
-              <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+              <ShieldCheck class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
               Laporan diurutkan otomatis — kerusakan paling berat selalu ditampilkan lebih dulu
             </p>
             <p class="whitespace-nowrap text-[11px] text-slate-600">{{ totalTickets }} tiket terdaftar</p>
@@ -823,7 +779,6 @@ const currentYear = new Date().getFullYear()
 </template>
 
 <style>
-/* Inter sebagai identitas tipografi (aman dihapus jika sudah dikonfigurasi di Tailwind) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 .sapa-root {
@@ -832,7 +787,6 @@ const currentYear = new Date().getFullYear()
 </style>
 
 <style scoped>
-/* Entrance seksi: fade-up halus dengan stagger */
 .fade-up {
   opacity: 0;
   animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -843,7 +797,6 @@ const currentYear = new Date().getFullYear()
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Entrance baris: hanya opacity — interaksi hover tetap bekerja */
 .card-enter {
   opacity: 0;
   animation: card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -854,7 +807,6 @@ const currentYear = new Date().getFullYear()
   to   { opacity: 1; }
 }
 
-/* Bar statistik tumbuh dari kiri saat mount */
 .stat-bar {
   transform-origin: left center;
   animation: grow-x 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;

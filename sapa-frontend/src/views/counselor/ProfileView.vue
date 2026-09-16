@@ -3,6 +3,29 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
+import {
+  ArrowLeft,
+  Shield,
+  ShieldCheck,
+  ListOrdered,
+  Check,
+  Camera,
+  RotateCcw,
+  User,
+  CreditCard,
+  Mail,
+  Phone,
+  Building,
+  HeartHandshake,
+  Lock,
+  Eye,
+  EyeOff,
+  X,
+  AlertTriangle,
+  Loader2,
+  ChevronRight,
+  Archive
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -21,15 +44,12 @@ const initialsOf = (name) => {
 }
 
 /* ---------------------------------- */
-/* Data profil BK (existing)          */
-/* ---------------------------------- */
-/* ---------------------------------- */
-/* Data profil BK — sekarang dari authStore, field disesuaikan skema */
+/* Data profil BK                     */
 /* ---------------------------------- */
 const profile = ref({
   name: authStore.user?.name || '',
   nip: authStore.user?.identity_number || '', // mapping identity_number -> nip di UI
-  role: 'Guru Bimbingan Konseling / Konselor Utama', // statis, tidak dari backend
+  role: 'Guru Bimbingan Konseling / Konselor Utama', // statis
   email: authStore.user?.email || '',
   phone: authStore.user?.phone || '',
   room: authStore.user?.room || '',
@@ -117,8 +137,7 @@ watch(
 )
 
 /* ---------------------------------- */
-/* Simpan profil (behavior existing + */
-/* validasi & sinkronisasi store)     */
+/* Simpan profil                      */
 /* ---------------------------------- */
 const isSaving = ref(false)
 const showSuccessAlert = ref(false)
@@ -165,9 +184,7 @@ const resetProfileForm = () => {
 }
 
 /* ---------------------------------- */
-/* Ganti password — wajib verifikasi  */
-/* password lama (selaras profil      */
-/* siswa)                             */
+/* Ganti password                     */
 /* ---------------------------------- */
 const passwordForm = ref({
   old_password: '',
@@ -283,9 +300,7 @@ const currentYear = new Date().getFullYear()
             @click="goBack"
             class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <ArrowLeft class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
             <span class="hidden sm:inline">Kembali</span>
           </button>
 
@@ -313,9 +328,7 @@ const currentYear = new Date().getFullYear()
           @click="goToQueue"
           class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-emerald-500/40 hover:text-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10" />
-          </svg>
+          <ListOrdered class="h-4 w-4" />
           <span class="hidden sm:inline">Antrian Aktif</span>
           <span class="sm:hidden">Antrian</span>
         </button>
@@ -325,7 +338,7 @@ const currentYear = new Date().getFullYear()
     <!-- ============ Konten ============ -->
     <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
 
-      <!-- Notifikasi berhasil (behavior existing, restyled) -->
+      <!-- Notifikasi berhasil -->
       <transition
         enter-active-class="transition duration-300 ease-out"
         enter-from-class="transform -translate-y-2 opacity-0"
@@ -339,9 +352,7 @@ const currentYear = new Date().getFullYear()
           role="status"
           class="mb-6 flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs font-semibold text-emerald-400"
         >
-          <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+          <Check class="h-4 w-4 shrink-0" :stroke-width="2.5" />
           <span>Perubahan profil berhasil disimpan!</span>
         </div>
       </transition>
@@ -362,9 +373,7 @@ const currentYear = new Date().getFullYear()
                     <template v-else>{{ initialsOf(profile.name) }}</template>
                   </div>
                   <span class="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-slate-950 ring-4 ring-slate-900" title="Akun terverifikasi">
-                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <Check class="h-3.5 w-3.5" :stroke-width="3" />
                   </span>
                 </div>
 
@@ -388,9 +397,7 @@ const currentYear = new Date().getFullYear()
                     Aktif / Bertugas
                   </p>
                 </div>
-                <svg class="h-5 w-5 shrink-0 text-emerald-400/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
+                <ShieldCheck class="h-5 w-5 shrink-0 text-emerald-400/70" />
               </div>
             </div>
 
@@ -412,9 +419,7 @@ const currentYear = new Date().getFullYear()
 
             <!-- Catatan kepercayaan -->
             <p class="flex items-center justify-center gap-1.5 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 text-center text-[11px] text-slate-600">
-              <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+              <Lock class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
               Data akun petugas hanya diakses oleh Anda &amp; administrator sistem
             </p>
           </div>
@@ -432,17 +437,13 @@ const currentYear = new Date().getFullYear()
                 class="group flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-slate-800/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-400/50"
               >
                 <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose-500/25 bg-rose-500/10 text-rose-400">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10" />
-                  </svg>
+                  <ListOrdered class="h-4 w-4" />
                 </span>
                 <span class="min-w-0 flex-1">
                   <span class="block text-xs font-semibold text-slate-200">Antrian Kasus Aktif</span>
                   <span class="block text-[10px] text-slate-500">Laporan yang sedang ditangani</span>
                 </span>
-                <svg class="h-4 w-4 shrink-0 text-slate-600 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronRight class="h-4 w-4 shrink-0 text-slate-600 transition-transform duration-150 group-hover:translate-x-0.5" />
               </button>
 
               <button
@@ -451,17 +452,13 @@ const currentYear = new Date().getFullYear()
                 class="group flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-slate-800/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-400/50"
               >
                 <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-300">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                  </svg>
+                  <Archive class="h-4 w-4" />
                 </span>
                 <span class="min-w-0 flex-1">
                   <span class="block text-xs font-semibold text-slate-200">Arsip &amp; Riwayat Kasus</span>
                   <span class="block text-[10px] text-slate-500">Dokumentasi kasus yang ditutup</span>
                 </span>
-                <svg class="h-4 w-4 shrink-0 text-slate-600 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronRight class="h-4 w-4 shrink-0 text-slate-600 transition-transform duration-150 group-hover:translate-x-0.5" />
               </button>
             </div>
           </div>
@@ -484,9 +481,7 @@ const currentYear = new Date().getFullYear()
 
             <div class="flex items-center justify-between gap-4 border-b border-slate-800/70 px-5 py-4 sm:px-6">
               <div class="flex items-center gap-2.5">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                <User class="h-4 w-4 text-emerald-400" />
                 <div>
                   <h3 class="text-sm font-bold tracking-tight text-slate-100">Informasi Pribadi &amp; Kontak</h3>
                   <p class="mt-0.5 text-[11px] text-slate-500">Data identitas petugas yang tertera pada sistem</p>
@@ -506,10 +501,7 @@ const currentYear = new Date().getFullYear()
                   <img v-if="displayAvatar" :src="displayAvatar" alt="Pratinjau foto profil" class="h-full w-full object-cover" />
                   <template v-else>{{ initialsOf(profile.name) }}</template>
                   <span class="absolute inset-0 flex items-center justify-center bg-slate-950/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true">
-                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+                    <Camera class="h-5 w-5 text-white" />
                   </span>
                 </label>
                 <input id="bk-avatar-input" ref="avatarInputRef" type="file" accept="image/*" class="hidden" @change="handleAvatarChange" />
@@ -542,9 +534,7 @@ const currentYear = new Date().getFullYear()
                 <div>
                   <label for="bk-name" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Nama Lengkap &amp; Gelar</label>
                   <div class="relative">
-                    <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <User class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                       id="bk-name"
                       v-model="profile.name"
@@ -557,7 +547,7 @@ const currentYear = new Date().getFullYear()
                     />
                   </div>
                   <p v-if="profileErrors.name" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                    <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                     {{ profileErrors.name }}
                   </p>
                 </div>
@@ -565,9 +555,7 @@ const currentYear = new Date().getFullYear()
                 <div>
                   <label for="bk-nip" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">NIP</label>
                   <div class="relative">
-                    <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0h4m-6 6h2m-2 4h2m4-4h2m-2 4h2" />
-                    </svg>
+                    <CreditCard class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                       id="bk-nip"
                       v-model="profile.nip"
@@ -580,7 +568,7 @@ const currentYear = new Date().getFullYear()
                     />
                   </div>
                   <p v-if="profileErrors.nip" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                    <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                     {{ profileErrors.nip }}
                   </p>
                 </div>
@@ -591,9 +579,7 @@ const currentYear = new Date().getFullYear()
                 <div>
                   <label for="bk-email" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Alamat Email (Akun)</label>
                   <div class="relative">
-                    <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
+                    <Mail class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                       id="bk-email"
                       v-model="profile.email"
@@ -606,7 +592,7 @@ const currentYear = new Date().getFullYear()
                     />
                   </div>
                   <p v-if="profileErrors.email" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                    <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                     {{ profileErrors.email }}
                   </p>
                 </div>
@@ -614,9 +600,7 @@ const currentYear = new Date().getFullYear()
                 <div>
                   <label for="bk-phone" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">No. WhatsApp / Telepon</label>
                   <div class="relative">
-                    <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
+                    <Phone class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                       id="bk-phone"
                       v-model="profile.phone"
@@ -630,7 +614,7 @@ const currentYear = new Date().getFullYear()
                     />
                   </div>
                   <p v-if="profileErrors.phone" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                    <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                     {{ profileErrors.phone }}
                   </p>
                 </div>
@@ -640,9 +624,7 @@ const currentYear = new Date().getFullYear()
               <div>
                 <label for="bk-room" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Lokasi Ruangan BK</label>
                 <div class="relative">
-                  <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
+                  <Building class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     id="bk-room"
                     v-model="profile.room"
@@ -655,7 +637,7 @@ const currentYear = new Date().getFullYear()
                   />
                 </div>
                 <p v-if="profileErrors.room" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                  <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                  <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                   {{ profileErrors.room }}
                 </p>
               </div>
@@ -667,9 +649,7 @@ const currentYear = new Date().getFullYear()
                   <span class="font-mono text-[10px] tabular-nums" :class="(profile.bio || '').length > 0 ? 'text-emerald-500/80' : 'text-slate-600'">{{ (profile.bio || '').length }} karakter</span>
                 </div>
                 <div class="relative">
-                  <svg class="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
+                  <HeartHandshake class="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
                   <textarea
                     id="bk-bio"
                     v-model="profile.bio"
@@ -685,9 +665,7 @@ const currentYear = new Date().getFullYear()
             <!-- Kaki formulir -->
             <div class="flex flex-col-reverse gap-3 border-t border-slate-800/70 bg-slate-950/30 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <p class="flex items-center gap-1.5 text-[10px] text-slate-600">
-                <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
+                <ShieldCheck class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
                 Perubahan data profil tercatat pada jejak audit sistem.
               </p>
 
@@ -697,9 +675,7 @@ const currentYear = new Date().getFullYear()
                   @click="resetProfileForm"
                   class="inline-flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-slate-600 hover:text-white active:scale-[.97] sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                 >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <RotateCcw class="h-4 w-4" />
                   Atur Ulang
                 </button>
 
@@ -708,13 +684,8 @@ const currentYear = new Date().getFullYear()
                   :disabled="isSaving"
                   class="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-emerald-500 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 >
-                  <svg v-if="!isSaving" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <svg v-else class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                  </svg>
+                  <Check v-if="!isSaving" class="h-4 w-4" :stroke-width="2.5" />
+                  <Loader2 v-else class="h-4 w-4 animate-spin" />
                   {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
                 </button>
               </div>
@@ -727,9 +698,7 @@ const currentYear = new Date().getFullYear()
 
             <div class="flex items-center justify-between gap-4 border-b border-slate-800/70 px-5 py-4 sm:px-6">
               <div class="flex items-center gap-2.5">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+                <Shield class="h-4 w-4 text-emerald-400" />
                 <div>
                   <h3 class="text-sm font-bold tracking-tight text-slate-100">Keamanan Akun</h3>
                   <p class="mt-0.5 text-[11px] text-slate-500">Verifikasi password saat ini untuk mengatur password baru</p>
@@ -742,9 +711,7 @@ const currentYear = new Date().getFullYear()
 
               <!-- Catatan keamanan -->
               <div class="flex items-start gap-2.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.05] px-3.5 py-3">
-                <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-400/90" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
+                <ShieldCheck class="mt-0.5 h-4 w-4 shrink-0 text-emerald-400/90" />
                 <p class="text-[11px] leading-relaxed text-slate-400">
                   Password Anda melindungi kerahasiaan kasus perundungan yang sedang ditangani. Masukkan
                   <span class="font-medium text-slate-300">password saat ini</span> untuk mengatur password baru.
@@ -755,9 +722,7 @@ const currentYear = new Date().getFullYear()
               <div>
                 <label for="bk-pw-old" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Password Saat Ini</label>
                 <div class="relative">
-                  <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                  <Lock class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     id="bk-pw-old"
                     v-model="passwordForm.old_password"
@@ -774,17 +739,12 @@ const currentYear = new Date().getFullYear()
                     :aria-label="showOldPassword ? 'Sembunyikan password' : 'Tampilkan password'"
                     class="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition-colors duration-200 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
                   >
-                    <svg v-if="!showOldPassword" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.03 10.03 0 013.682-.782c4.478 0 8.268 2.943 9.542 7a10.017 10.017 0 01-2.06 3.65m-2.222 2.221L2 2l20 20" />
-                    </svg>
+                    <Eye class="h-4 w-4" v-if="!showOldPassword" />
+                    <EyeOff class="h-4 w-4" v-else />
                   </button>
                 </div>
                 <p v-if="passwordErrors.old_password" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                  <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                  <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                   {{ passwordErrors.old_password }}
                 </p>
               </div>
@@ -796,9 +756,7 @@ const currentYear = new Date().getFullYear()
                   <span class="font-mono text-[10px] text-slate-600">min. 8 karakter</span>
                 </div>
                 <div class="relative">
-                  <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                  <Lock class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     id="bk-pw-new"
                     v-model="passwordForm.new_password"
@@ -815,13 +773,8 @@ const currentYear = new Date().getFullYear()
                     :aria-label="showNewPassword ? 'Sembunyikan password' : 'Tampilkan password'"
                     class="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition-colors duration-200 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
                   >
-                    <svg v-if="!showNewPassword" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.03 10.03 0 013.682-.782c4.478 0 8.268 2.943 9.542 7a10.017 10.017 0 01-2.06 3.65m-2.222 2.221L2 2l20 20" />
-                    </svg>
+                    <Eye class="h-4 w-4" v-if="!showNewPassword" />
+                    <EyeOff class="h-4 w-4" v-else />
                   </button>
                 </div>
 
@@ -835,7 +788,7 @@ const currentYear = new Date().getFullYear()
                 </div>
 
                 <p v-if="passwordErrors.new_password" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                  <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                  <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                   {{ passwordErrors.new_password }}
                 </p>
               </div>
@@ -849,15 +802,13 @@ const currentYear = new Date().getFullYear()
                     class="flex items-center gap-1 text-[10px] font-semibold"
                     :class="confirmMatch === 'match' ? 'text-emerald-400' : 'text-red-400'"
                   >
-                    <svg v-if="confirmMatch === 'match'" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    <svg v-else class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <Check class="h-3 w-3" :stroke-width="2.5" v-if="confirmMatch === 'match'" />
+                    <X class="h-3 w-3" :stroke-width="2.5" v-else />
                     {{ confirmMatch === 'match' ? 'Cocok' : 'Belum cocok' }}
                   </span>
                 </div>
                 <div class="relative">
-                  <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
+                  <Lock class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     id="bk-pw-confirm"
                     v-model="passwordForm.new_password_confirmation"
@@ -874,17 +825,12 @@ const currentYear = new Date().getFullYear()
                     :aria-label="showConfirmPassword ? 'Sembunyikan password' : 'Tampilkan password'"
                     class="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition-colors duration-200 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
                   >
-                    <svg v-if="!showConfirmPassword" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.03 10.03 0 013.682-.782c4.478 0 8.268 2.943 9.542 7a10.017 10.017 0 01-2.06 3.65m-2.222 2.221L2 2l20 20" />
-                    </svg>
+                    <Eye class="h-4 w-4" v-if="!showConfirmPassword" />
+                    <EyeOff class="h-4 w-4" v-else />
                   </button>
                 </div>
                 <p v-if="passwordErrors.new_password_confirmation" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                  <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                  <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
                   {{ passwordErrors.new_password_confirmation }}
                 </p>
               </div>
@@ -898,13 +844,8 @@ const currentYear = new Date().getFullYear()
                 :disabled="isChangingPassword"
                 class="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-emerald-500 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
               >
-                <svg v-if="!isChangingPassword" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <svg v-else class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
+                <Lock class="h-4 w-4" v-if="!isChangingPassword" />
+                <Loader2 class="h-4 w-4 animate-spin" v-else />
                 {{ isChangingPassword ? 'Memproses...' : 'Ubah Password' }}
               </button>
             </div>
@@ -924,7 +865,6 @@ const currentYear = new Date().getFullYear()
 </template>
 
 <style>
-/* Inter sebagai identitas tipografi (aman dihapus jika sudah dikonfigurasi di Tailwind) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 .sapa-root {
@@ -933,7 +873,6 @@ const currentYear = new Date().getFullYear()
 </style>
 
 <style scoped>
-/* Entrance seksi: fade-up halus dengan stagger */
 .fade-up {
   opacity: 0;
   animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;

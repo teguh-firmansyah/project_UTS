@@ -4,6 +4,23 @@ import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import reportService from '@/services/reportService'
 
+// Import Icon Lucide Vue Next
+import {
+  ArrowLeft,
+  LayoutList,
+  Archive,
+  CheckCircle,
+  XCircle,
+  Search,
+  X,
+  Filter,
+  ChevronDown,
+  ChevronRight,
+  ShieldCheck,
+  Lock,
+  UserCheck
+} from 'lucide-vue-next'
+
 const router = useRouter()
 
 const logoFailed = ref(false)
@@ -14,13 +31,16 @@ const selectedStatus = ref('Semua')
 const selectedPriority = ref('Semua')
 
 const STATUS_MAP = {
-  pending: 'Menunggu', reviewing: 'Ditinjau', in_progress: 'Diproses',
-  resolved: 'Selesai', rejected: 'Ditolak',
+  pending: 'Menunggu',
+  reviewing: 'Ditinjau',
+  in_progress: 'Diproses',
+  resolved: 'Selesai',
+  rejected: 'Ditolak',
 }
 const RELATION_MAP = { victim: 'Korban Langsung', witness: 'Saksi' }
 
 /* ---------------------------------- */
-/* Data arsip — sekarang dari API      */
+/* Data arsip dari API                */
 /* ---------------------------------- */
 const archivedReports = ref([])
 
@@ -44,7 +64,7 @@ async function loadArchive() {
       priority: r.priority === 'urgent' || r.priority === 'high' ? 'Tinggi'
         : r.priority === 'medium' ? 'Sedang' : 'Rendah',
       handled_by: r.detail?.handled_by ?? '—',
-      action_taken: RELATION_MAP[r.detail?.reporter_relation] ?? '—', // dipakai sebagai label pendukung
+      action_taken: RELATION_MAP[r.detail?.reporter_relation] ?? '—',
       summary: r.detail?.handling_notes || 'Tidak ada catatan penanganan tercatat.',
     }))
   } catch {
@@ -65,7 +85,7 @@ onBeforeUnmount(() => {
 })
 
 /* ---------------------------------- */
-/* Filter (client-side, di atas data yang sudah termuat) */
+/* Filter (client-side)               */
 /* ---------------------------------- */
 const filteredReports = computed(() => {
   return archivedReports.value.filter((item) => {
@@ -93,17 +113,17 @@ const statCards = computed(() => {
   return [
     {
       label: 'Total Kasus Diarsipkan', value: total, caption: 'Dokumentasi kasus yang telah ditutup', pct: 100,
-      icon: 'M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
+      icon: Archive,
       num: 'text-white', tile: 'border-rose-500/25 bg-rose-500/10 text-rose-400', bar: 'bg-rose-500',
     },
     {
       label: 'Kasus Tuntas (Selesai)', value: completed, caption: `${pct(completed)}% dari total arsip`, pct: pct(completed),
-      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: CheckCircle,
       num: 'text-slate-300', tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300', bar: 'bg-slate-500',
     },
     {
       label: 'Laporan Ditolak / Tidak Valid', value: rejected, caption: `${pct(rejected)}% dari total arsip`, pct: pct(rejected),
-      icon: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: XCircle,
       num: 'text-red-400', tile: 'border-red-500/25 bg-red-500/10 text-red-400', bar: 'bg-red-500',
     },
   ]
@@ -162,7 +182,6 @@ const selectedReport = ref(null)
 const openDetailModal = (item) => { selectedReport.value = item }
 const closeDetailModal = () => { selectedReport.value = null }
 
-/* PERBAIKAN: pakai named route, bukan string path manual */
 const goToDetail = (id) => router.push({ name: 'bullying-report-detail', params: { id } })
 
 const goToDetailFromModal = () => {
@@ -213,9 +232,7 @@ const currentYear = new Date().getFullYear()
             title="Kembali"
             class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <ArrowLeft class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
             <span class="hidden sm:inline">Kembali</span>
           </button>
 
@@ -241,9 +258,7 @@ const currentYear = new Date().getFullYear()
           @click="goToQueue"
           class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-emerald-500/40 hover:text-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10M4 18h10" />
-          </svg>
+          <LayoutList class="h-4 w-4" />
           <span class="hidden sm:inline">Lihat Antrian Aktif</span>
           <span class="sm:hidden">Antrian</span>
         </button>
@@ -295,9 +310,7 @@ const currentYear = new Date().getFullYear()
                   <p class="mt-2 text-3xl font-extrabold tracking-tight tabular-nums" :class="s.num">{{ s.value }}</p>
                 </div>
                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-transform duration-200 group-hover:scale-110" :class="s.tile">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" :d="s.icon" />
-                  </svg>
+                  <component :is="s.icon" class="h-5 w-5" />
                 </div>
               </div>
               <div class="mt-4">
@@ -327,9 +340,7 @@ const currentYear = new Date().getFullYear()
           <div class="space-y-4 border-b border-slate-800/80 p-4 sm:p-5">
             <div class="flex flex-col gap-3 sm:flex-row">
               <div class="relative flex-1">
-                <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-                </svg>
+                <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
                   v-model="searchQuery"
                   type="text"
@@ -344,16 +355,12 @@ const currentYear = new Date().getFullYear()
                   aria-label="Bersihkan pencarian"
                   class="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition-colors duration-150 hover:bg-slate-800 hover:text-slate-200"
                 >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X class="h-3.5 w-3.5" />
                 </button>
               </div>
 
               <div class="relative w-full sm:w-52">
-                <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
+                <Filter class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <select
                   v-model="selectedPriority"
                   aria-label="Filter prioritas"
@@ -364,9 +371,7 @@ const currentYear = new Date().getFullYear()
                   <option value="Sedang">Prioritas Sedang</option>
                   <option value="Rendah">Prioritas Rendah</option>
                 </select>
-                <svg class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
+                <ChevronDown class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               </div>
             </div>
 
@@ -396,9 +401,7 @@ const currentYear = new Date().getFullYear()
                   class="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-400 transition-all duration-150 hover:border-rose-500/40 hover:text-rose-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
                 >
                   Atur ulang
-                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X class="h-3 w-3" />
                 </button>
               </div>
             </div>
@@ -432,9 +435,7 @@ const currentYear = new Date().getFullYear()
               <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 xl:contents">
                 <div class="min-w-0">
                   <p v-if="item.is_anonymous" class="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                    <svg class="h-3.5 w-3.5 shrink-0 text-rose-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+                    <Lock class="h-3.5 w-3.5 shrink-0 text-rose-400/80" />
                     Anonim
                   </p>
                   <template v-else>
@@ -480,9 +481,7 @@ const currentYear = new Date().getFullYear()
                   class="inline-flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 transition-all duration-150 hover:bg-emerald-500 hover:text-slate-950 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 sm:w-auto"
                 >
                   Detail
-                  <svg class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
+                  <ChevronRight class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
                 </button>
               </div>
             </article>
@@ -490,12 +489,8 @@ const currentYear = new Date().getFullYear()
 
           <div v-else class="flex flex-col items-center px-6 py-16 text-center">
             <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400">
-              <svg v-if="hasActiveFilters" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-              </svg>
-              <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
+              <Search v-if="hasActiveFilters" class="h-6 w-6" />
+              <Archive v-else class="h-6 w-6" />
             </div>
             <p class="mt-4 text-sm font-semibold text-slate-200">
               {{ hasActiveFilters ? 'Arsip tidak ditemukan' : 'Belum ada kasus terarsip' }}
@@ -518,9 +513,7 @@ const currentYear = new Date().getFullYear()
 
           <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 sm:px-6">
             <p class="flex items-center gap-1.5 text-[11px] text-slate-600">
-              <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+              <Lock class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
               Arsip kasus bersifat rahasia — hanya dapat diakses oleh petugas berwenang
             </p>
             <p class="whitespace-nowrap text-[11px] text-slate-600">{{ stats.total }} kasus terdokumentasi</p>
@@ -528,13 +521,6 @@ const currentYear = new Date().getFullYear()
         </section>
       </template>
     </main>
-
-    <footer class="border-t border-slate-800/70">
-      <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
-        <p class="text-[11px] text-slate-600">© {{ currentYear }} SAPA — Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
-        <p class="text-[11px] text-slate-600">Laporan perundungan ditangani secara rahasia oleh petugas berwenang</p>
-      </div>
-    </footer>
 
     <!-- ============ Modal ringkasan kasus ============ -->
     <div
@@ -575,9 +561,7 @@ const currentYear = new Date().getFullYear()
             aria-label="Tutup"
             class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors duration-200 hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X class="h-4 w-4" />
           </button>
         </div>
 
@@ -589,9 +573,7 @@ const currentYear = new Date().getFullYear()
               <dd class="mt-1 min-w-0">
                 <template v-if="selectedReport.is_anonymous">
                   <p class="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                    <svg class="h-3.5 w-3.5 shrink-0 text-rose-400/80" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+                    <Lock class="h-3.5 w-3.5 shrink-0 text-rose-400/80" />
                     Anonim
                   </p>
                   <p class="mt-0.5 text-[10px] text-slate-500">{{ selectedReport.reporter_class }} · Identitas dilindungi</p>
@@ -625,9 +607,7 @@ const currentYear = new Date().getFullYear()
           </dl>
 
           <div class="flex items-start gap-2.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.05] px-3.5 py-3">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-400/90" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+            <UserCheck class="mt-0.5 h-4 w-4 shrink-0 text-emerald-400/90" />
             <div class="min-w-0">
               <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Peran Pelapor</p>
               <p class="mt-1 text-xs font-semibold leading-snug text-emerald-400">{{ selectedReport.action_taken }}</p>
@@ -659,15 +639,20 @@ const currentYear = new Date().getFullYear()
                 class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
               >
                 Buka Detail Lengkap
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronRight class="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <footer class="border-t border-slate-800/70">
+      <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
+        <p class="text-[11px] text-slate-600">© {{ currentYear }} SAPA — Sistem Layanan Aspirasi &amp; Pengaduan Sekolah</p>
+        <p class="text-[11px] text-slate-600">Laporan perundungan ditangani secara rahasia oleh petugas berwenang</p>
+      </div>
+    </footer>
   </div>
 </template>
 

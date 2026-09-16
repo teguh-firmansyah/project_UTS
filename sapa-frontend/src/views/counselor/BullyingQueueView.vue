@@ -5,6 +5,28 @@ import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
 import reportService from '@/services/reportService'
 
+// Import Icon dari Lucide
+import {
+  Archive,
+  LogOut,
+  CheckCircle2,
+  Briefcase,
+  Lock,
+  Heart,
+  ClipboardCheck,
+  Search,
+  X,
+  User,
+  ShieldCheck,
+  Calendar,
+  ChevronRight,
+  ShieldAlert,
+  AlertCircle,
+  Clock,
+  RefreshCw,
+  FileText
+} from 'lucide-vue-next'
+
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -65,7 +87,7 @@ const RELATION_MAP = {
 }
 
 /* ---------------------------------- */
-/* Data laporan bullying — dari API, bukan dummy lagi                  */
+/* Data laporan bullying dari API     */
 /* ---------------------------------- */
 const reports = ref([])
 const stats = ref(null)
@@ -80,11 +102,10 @@ async function loadReports() {
 
     const data = await reportService.getBullyingQueue(params)
 
-    // Mapping response backend ke bentuk yang dipakai UI ini
     reports.value = data.data.map((r) => ({
       id: r.id,
       ticket_code: r.report_code,
-      category: r.title, // backend generate otomatis "Laporan Bullying"
+      category: r.title,
       reporter_relation: RELATION_MAP[r.detail?.reporter_relation] ?? '—',
       is_anonymous: r.is_anonymous,
       incident_date: r.detail?.incident_date ?? null,
@@ -116,16 +137,11 @@ onMounted(() => {
   loadStats()
 })
 
-/* Reload dari server saat filter status berubah — bukan filter client-side lagi,
-   karena backend sudah sediakan filter via query param */
 function selectStatus(value) {
   selectedStatus.value = value
   loadReports()
 }
 
-/* ---------------------------------- */
-/* Filter search tetap di client (ringan, tidak perlu roundtrip API)   */
-/* ---------------------------------- */
 const filteredReports = computed(() => {
   if (!searchQuery.value.trim()) return reports.value
   const q = searchQuery.value.toLowerCase()
@@ -135,7 +151,6 @@ const filteredReports = computed(() => {
   )
 })
 
-/* Counter stats — dari endpoint /bullying-stats, bukan dihitung di client */
 const totalPending = computed(() => stats.value?.pending ?? 0)
 const totalInReview = computed(() => (stats.value?.reviewing ?? 0) + (stats.value?.in_progress ?? 0))
 const totalResolved = computed(() => stats.value?.resolved ?? 0)
@@ -158,30 +173,27 @@ const statCards = computed(() => {
   return [
     {
       label: 'Total Kasus', value: total, caption: 'Seluruh kasus dalam antrian BK', pct: 100,
-      icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      icon: FileText,
       num: 'text-white', tile: 'border-rose-500/25 bg-rose-500/10 text-rose-400', bar: 'bg-rose-500',
     },
     {
       label: 'Butuh Respon', value: totalPending.value, caption: 'Laporan baru berstatus Menunggu', pct: pct(totalPending.value),
-      icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: Clock,
       num: 'text-amber-400', tile: 'border-amber-500/25 bg-amber-500/10 text-amber-400', bar: 'bg-amber-500', pulse: true,
     },
     {
       label: 'Dalam Penanganan', value: totalInReview.value, caption: 'Sedang ditinjau / diproses BK', pct: pct(totalInReview.value),
-      icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+      icon: RefreshCw,
       num: 'text-emerald-400', tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400', bar: 'bg-emerald-500',
     },
     {
       label: 'Kasus Selesai', value: totalResolved.value, caption: 'Laporan tuntas ditangani', pct: pct(totalResolved.value),
-      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      icon: CheckCircle2,
       num: 'text-slate-300', tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300', bar: 'bg-slate-500',
     },
   ]
 })
 
-/* ---------------------------------- */
-/* Helper badge status                 */
-/* ---------------------------------- */
 const getStatusBadge = (status) => {
   switch (status) {
     case 'Menunggu': return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -212,7 +224,6 @@ const statusOptions = [
 
 const pillIdle = 'border-slate-800 bg-slate-950/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
 
-/* Hitung jumlah per status dari data yang sedang termuat (approksimasi tampilan pill) */
 const statusCounts = computed(() => {
   const counts = { ALL: totalCases.value }
   counts['Menunggu'] = totalPending.value
@@ -261,7 +272,7 @@ const currentYear = new Date().getFullYear()
 <template>
   <div class="sapa-root flex min-h-screen flex-col bg-slate-950 font-sans text-slate-100 antialiased selection:bg-emerald-500/25">
 
-    <!-- ============ Bar atas ============ -->
+    <!-- Header -->
     <header class="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
       <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
         <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
@@ -284,9 +295,7 @@ const currentYear = new Date().getFullYear()
             title="Lihat Arsip Pelaporan"
             class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <svg class="h-4 w-4 text-slate-500 transition-colors duration-200 group-hover:text-slate-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-            </svg>
+            <Archive class="h-4 w-4 text-slate-500 transition-colors duration-200 group-hover:text-slate-300" />
             <span class="hidden sm:inline">Arsip Laporan</span>
           </router-link>
 
@@ -312,18 +321,15 @@ const currentYear = new Date().getFullYear()
             title="Keluar dari akun"
             class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/80 text-slate-500 transition-all duration-200 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
           >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut class="h-5 w-5" />
           </button>
         </div>
       </div>
     </header>
 
-    <!-- ============ Konten ============ -->
     <main class="mx-auto w-full max-w-7xl flex-1 space-y-10 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
 
-      <!-- ===== Hero panel BK ===== -->
+      <!-- Hero Panel -->
       <section class="fade-up relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
         <img :src="heroPhoto" alt="" aria-hidden="true" draggable="false"
              class="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-20 grayscale contrast-125 brightness-[.65]" />
@@ -370,9 +376,7 @@ const currentYear = new Date().getFullYear()
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Petugas Penanganan</p>
                 <span class="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
-                  </svg>
+                  <CheckCircle2 class="h-3 w-3" />
                   Terverifikasi
                 </span>
               </div>
@@ -393,9 +397,7 @@ const currentYear = new Date().getFullYear()
                   <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Kasus Aktif</p>
                   <p class="mt-1 text-lg font-extrabold leading-none tabular-nums text-white">{{ activeCases }}</p>
                 </div>
-                <svg class="h-5 w-5 text-slate-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-5.99-.626-8.542-1.744M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h10.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H21v-4z" />
-                </svg>
+                <Briefcase class="h-5 w-5 text-slate-600" />
               </div>
             </aside>
           </div>
@@ -403,9 +405,7 @@ const currentYear = new Date().getFullYear()
           <div class="grid grid-cols-1 gap-4 border-t border-slate-800/70 pt-5 sm:grid-cols-3 sm:gap-6">
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+                <Lock class="h-4 w-4 text-emerald-400" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Kerahasiaan Terjamin</p>
@@ -415,9 +415,7 @@ const currentYear = new Date().getFullYear()
 
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
+                <Heart class="h-4 w-4 text-emerald-400" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Penanganan Berempati</p>
@@ -427,9 +425,7 @@ const currentYear = new Date().getFullYear()
 
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/60">
-                <svg class="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
+                <ClipboardCheck class="h-4 w-4 text-emerald-400" />
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-200">Dokumentasi Transparan</p>
@@ -440,7 +436,7 @@ const currentYear = new Date().getFullYear()
         </div>
       </section>
 
-      <!-- ===== Statistik penanganan ===== -->
+      <!-- Statistik -->
       <section class="fade-up space-y-4" style="animation-delay: 90ms">
         <div class="flex items-center gap-3">
           <span class="h-4 w-[3px] rounded-full bg-emerald-500" aria-hidden="true"></span>
@@ -450,7 +446,6 @@ const currentYear = new Date().getFullYear()
           </div>
         </div>
 
-        <!-- Skeleton saat loading stats -->
         <div v-if="isLoadingStats" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <div v-for="i in 4" :key="i" class="h-32 rounded-xl border border-slate-800 bg-slate-900 animate-pulse" />
         </div>
@@ -473,9 +468,7 @@ const currentYear = new Date().getFullYear()
                 <p class="mt-2 text-3xl font-extrabold tracking-tight tabular-nums" :class="s.num">{{ s.value }}</p>
               </div>
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-transform duration-200 group-hover:scale-110" :class="s.tile">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="s.icon" />
-                </svg>
+                <component :is="s.icon" class="h-5 w-5" />
               </div>
             </div>
             <div class="mt-4">
@@ -488,7 +481,7 @@ const currentYear = new Date().getFullYear()
         </div>
       </section>
 
-      <!-- ===== Antrian kasus ===== -->
+      <!-- Antrian Kasus -->
       <section class="fade-up" style="animation-delay: 180ms">
         <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
 
@@ -501,9 +494,7 @@ const currentYear = new Date().getFullYear()
 
           <div class="space-y-4 border-b border-slate-800/80 p-4 sm:p-5">
             <div class="relative">
-              <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-              </svg>
+              <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 v-model="searchQuery"
                 type="text"
@@ -518,9 +509,7 @@ const currentYear = new Date().getFullYear()
                 aria-label="Bersihkan pencarian"
                 class="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition-colors duration-150 hover:bg-slate-800 hover:text-slate-200"
               >
-                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X class="h-3.5 w-3.5" />
               </button>
             </div>
 
@@ -550,9 +539,7 @@ const currentYear = new Date().getFullYear()
                   class="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-400 transition-all duration-150 hover:border-rose-500/40 hover:text-rose-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
                 >
                   Atur ulang
-                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X class="h-3 w-3" />
                 </button>
               </div>
             </div>
@@ -593,18 +580,12 @@ const currentYear = new Date().getFullYear()
               <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 xl:contents">
                 <div class="min-w-0">
                   <p class="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
-                    <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <User class="h-3.5 w-3.5 shrink-0 text-slate-500" />
                     {{ item.reporter_relation }}
                   </p>
                   <p class="mt-0.5 flex items-center gap-1 text-[10px] text-slate-500">
-                    <svg v-if="item.is_anonymous" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    <svg v-else class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <Lock v-if="item.is_anonymous" class="h-3 w-3 shrink-0" />
+                    <CheckCircle2 v-else class="h-3 w-3 shrink-0" />
                     <span>{{ item.is_anonymous ? 'Identitas dilindungi' : 'Teridentifikasi' }}</span>
                   </p>
                 </div>
@@ -627,9 +608,7 @@ const currentYear = new Date().getFullYear()
 
                 <div class="min-w-0">
                   <p class="flex items-center gap-1.5 text-xs text-slate-400">
-                    <svg class="h-3.5 w-3.5 shrink-0 text-slate-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                    <Calendar class="h-3.5 w-3.5 shrink-0 text-slate-600" />
                     <span>{{ formatIncidentDate(item.incident_date) }}</span>
                   </p>
                   <p class="mt-0.5 pl-5 text-[10px] text-slate-600">Dilaporkan {{ formatCreatedTime(item.created_at) }}</p>
@@ -643,9 +622,7 @@ const currentYear = new Date().getFullYear()
                   class="inline-flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700 bg-slate-800/50 px-3.5 py-2 text-xs font-semibold text-slate-300 transition-all duration-150 hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 sm:w-auto"
                 >
                   Tinjau &amp; Tangani
-                  <svg class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
+                  <ChevronRight class="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
                 </button>
               </div>
             </article>
@@ -653,12 +630,8 @@ const currentYear = new Date().getFullYear()
 
           <div v-else class="flex flex-col items-center px-6 py-16 text-center">
             <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400">
-              <svg v-if="hasActiveFilters" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z" />
-              </svg>
-              <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+              <Search v-if="hasActiveFilters" class="h-6 w-6" />
+              <ShieldAlert v-else class="h-6 w-6" />
             </div>
             <p class="mt-4 text-sm font-semibold text-slate-200">
               {{ hasActiveFilters ? 'Kasus tidak ditemukan' : 'Tidak ada kasus perundungan' }}
@@ -681,9 +654,7 @@ const currentYear = new Date().getFullYear()
 
           <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 sm:px-6">
             <p class="flex items-center gap-1.5 text-[11px] text-slate-600">
-              <svg class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+              <Lock class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
               Laporan anonim hanya menampilkan relasi pelapor — identitas asli diakses petugas berwenang saat penanganan
             </p>
             <p class="whitespace-nowrap text-[11px] text-slate-600">{{ totalCases }} kasus terdaftar</p>
