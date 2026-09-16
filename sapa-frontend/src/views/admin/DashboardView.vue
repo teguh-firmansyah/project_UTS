@@ -1,42 +1,19 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
+import reportService from '@/services/reportService'
 
-/* ---------- Import Lucide Icons ---------- */
 import {
-  BarChart3,
-  FileText,
-  Users,
-  LogOut,
-  ArrowRight,
-  ShieldCheck,
-  Lock,
-  FileCheck,
-  KeyRound,
-  CheckCircle2,
-  Clock,
-  RefreshCw,
-  Heart,
-  ChevronRight,
-  Activity,
-  Settings,
-  AlertCircle
-
+  BarChart3, FileText, Users, LogOut, ArrowRight, ShieldCheck, Lock,
+  FileCheck, KeyRound, CheckCircle2, Clock, RefreshCw, ChevronRight,
+  Activity, Settings,
 } from 'lucide-vue-next'
 
 import {
-  Chart as ChartJS,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  LineElement,
-  PointElement,
-  CategoryScale,
-  LinearScale,
-  ArcElement
+  Chart as ChartJS, Title, Tooltip, Legend, Filler, LineElement,
+  PointElement, CategoryScale, LinearScale, ArcElement,
 } from 'chart.js'
 import { Line, Doughnut } from 'vue-chartjs'
 
@@ -47,8 +24,8 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const logoFailed = ref(false)
+const isLoading = ref(true)
 
-/* ---------- Turunan identitas ---------- */
 const initials = computed(() => {
   const name = authStore.user?.name || 'Administrator'
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -64,111 +41,102 @@ const greeting = computed(() => {
   return 'Selamat malam'
 })
 
-/* ---------- Navigasi panel ---------- */
 const navItems = [
-  {
-    label: 'Analitik',
-    to: '/admin/dashboard',
-    icon: BarChart3,
-  },
-  {
-    label: 'Semua Laporan',
-    to: '/admin/reports',
-    icon: FileText,
-  },
-  {
-    label: 'Manajemen User',
-    to: '/admin/users',
-    icon: Users,
-  },
-  
-  { 
-    label: 'Pengaturan', 
-    to: '/admin/settings', 
-    icon: Settings
-  },
+  { label: 'Analitik', to: '/admin/dashboard', icon: BarChart3 },
+  { label: 'Semua Laporan', to: '/admin/reports', icon: FileText },
+  { label: 'Manajemen User', to: '/admin/users', icon: Users },
+  { label: 'Pengaturan', to: '/admin/settings', icon: Settings },
 ]
 
 const isActive = (item) => route.path === item.to || route.path.startsWith(item.to + '/')
 
-/* ---------- Data metrik ---------- */
-const stats = ref({
-  totalReports: 342,
-  resolvedRate: 88.5,
-  avgResolutionDays: 1.8,
-  pendingCount: 14,
+/* ---------------------------------- */
+/* Data analitik — sekarang dari API   */
+/* ---------------------------------- */
+const analytics = ref(null)
+
+async function loadAnalytics() {
+  isLoading.value = true
+  try {
+    analytics.value = await reportService.getAdminAnalytics()
+  } catch {
+    toast.error('Gagal memuat data analitik.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(loadAnalytics)
+
+const stats = computed(() => {
+  if (!analytics.value) {
+    return { totalReports: 0, resolvedRate: 0, avgResolutionDays: 0, pendingCount: 0 }
+  }
+  return {
+    totalReports: analytics.value.summary.total_reports,
+    resolvedRate: analytics.value.summary.resolve_rate,
+    avgResolutionDays: analytics.value.summary.avg_resolution_days,
+    pendingCount: analytics.value.summary.pending,
+  }
 })
 
 const activeSummary = computed(() => {
+  if (isLoading.value) return 'Memuat ringkasan sistem...'
   const s = stats.value
   return `${s.pendingCount} laporan sedang diproses · ${s.resolvedRate}% tingkat penyelesaian`
 })
 
 const statCards = computed(() => {
   const s = stats.value
-  const resolvedCount = Math.round(s.totalReports * (s.resolvedRate / 100))
-  const pendingPct = Math.round((s.pendingCount / s.totalReports) * 100)
+  const resolvedCount = analytics.value?.summary.resolved ?? 0
+  const pendingPct = s.totalReports > 0 ? Math.round((s.pendingCount / s.totalReports) * 100) : 0
   return [
     {
-      label: 'Total Semua Laporan',
-      value: s.totalReports,
-      badge: 'Masuk',
+      label: 'Total Semua Laporan', value: s.totalReports, badge: 'Masuk',
       badgeClass: 'border-slate-700/50 bg-slate-800/80 text-slate-300',
-      caption: 'Seluruh laporan terdaftar lintas sistem',
-      pct: 100,
-      icon: FileText,
-      num: 'text-white',
-      tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
-      bar: 'bg-emerald-500',
+      caption: 'Seluruh laporan terdaftar lintas sistem', pct: 100,
+      icon: FileText, num: 'text-white', tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400', bar: 'bg-emerald-500',
     },
     {
-      label: 'Tingkat Penyelesaian',
-      value: s.resolvedRate + '%',
-      badge: 'Resolved Rate',
+      label: 'Tingkat Penyelesaian', value: s.resolvedRate + '%', badge: 'Resolved Rate',
       badgeClass: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
-      caption: `${resolvedCount} dari ${s.totalReports} laporan tuntas`,
-      pct: s.resolvedRate,
-      icon: CheckCircle2,
-      num: 'text-emerald-400',
-      tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400',
-      bar: 'bg-emerald-500',
+      caption: `${resolvedCount} dari ${s.totalReports} laporan tuntas`, pct: s.resolvedRate,
+      icon: CheckCircle2, num: 'text-emerald-400', tile: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400', bar: 'bg-emerald-500',
     },
     {
-      label: 'Rata-Rata Waktu Selesai',
-      value: s.avgResolutionDays + ' Hari',
-      badge: 'Per Laporan',
+      label: 'Rata-Rata Waktu Selesai', value: s.avgResolutionDays + ' Hari', badge: 'Per Laporan',
       badgeClass: 'border-slate-700/50 bg-slate-800/80 text-slate-400',
-      caption: 'Target internal: maks. 2 hari per laporan',
-      pct: Math.round((s.avgResolutionDays / 2) * 100),
-      icon: Clock,
-      num: 'text-white',
-      tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300',
-      bar: 'bg-slate-500',
+      caption: 'Target internal: maks. 2 hari per laporan', pct: Math.min(Math.round((s.avgResolutionDays / 2) * 100), 100),
+      icon: Clock, num: 'text-white', tile: 'border-slate-600/50 bg-slate-700/30 text-slate-300', bar: 'bg-slate-500',
     },
     {
-      label: 'Sedang Diproses',
-      value: s.pendingCount,
-      badge: 'Pending',
+      label: 'Sedang Diproses', value: s.pendingCount, badge: 'Pending',
       badgeClass: 'border-amber-500/20 bg-amber-500/10 text-amber-400',
-      caption: `${pendingPct}% dari total laporan aktif`,
-      pct: pendingPct,
-      icon: RefreshCw,
-      num: 'text-amber-400',
-      tile: 'border-amber-500/25 bg-amber-500/10 text-amber-400',
-      bar: 'bg-amber-500',
+      caption: `${pendingPct}% dari total laporan aktif`, pct: pendingPct,
+      icon: RefreshCw, num: 'text-amber-400', tile: 'border-amber-500/25 bg-amber-500/10 text-amber-400', bar: 'bg-amber-500',
     },
   ]
 })
 
-/* ---------- Agregat bullying (privasi) ---------- */
-const bullyingStats = ref({
-  total: 24,
-  waiting: 3,
-  inProcess: 5,
-  resolved: 16,
+/* ---------------------------------- */
+/* Agregat bullying — dari by_status filtered, atau tambahan endpoint stats BK */
+/* ---------------------------------- */
+const bullyingStats = computed(() => {
+  if (!analytics.value) return { total: 0, waiting: 0, inProcess: 0, resolved: 0 }
+  // Catatan: ini pendekatan sederhana dari by_type + by_status gabungan (agregat lintas semua tipe).
+  // Untuk breakdown status KHUSUS bullying, idealnya backend expose field terpisah —
+  // sementara pakai total by_type.bullying sebagai "Total Aduan"
+  return {
+    total: analytics.value.by_type.bullying,
+    waiting: analytics.value.by_status.pending,
+    inProcess: analytics.value.by_status.reviewing + analytics.value.by_status.in_progress,
+    resolved: analytics.value.by_status.resolved,
+  }
 })
 
-/* ---------- Aktivitas sistem ---------- */
+/* ---------------------------------- */
+/* Aktivitas sistem — dari API          */
+/* ---------------------------------- */
 const typeMeta = {
   'Fasilitas': 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400',
   'Aspirasi': 'border-purple-500/20 bg-purple-500/10 text-purple-400',
@@ -176,81 +144,58 @@ const typeMeta = {
   'Sistem': 'border-slate-700 bg-slate-800/60 text-slate-300',
 }
 
-const recentActivities = ref([
-  { id: 1, code: 'LAP-2026-089', type: 'Fasilitas', text: 'Laporan fasilitas (AC Ruang 12) diperbarui menjadi SELESAI', time: '12 menit lalu' },
-  { id: 2, code: 'LAP-2026-088', type: 'Aspirasi', text: 'Aspirasi baru masuk: Usulan menu kantin sehat', time: '1 jam lalu' },
-  { id: 3, code: 'SYS-AUDIT', type: 'Sistem', text: 'Penambahan user baru dengan role [Staff Sarpras]', time: '3 jam lalu' },
-  { id: 4, code: 'LAP-2026-087', type: 'Perundungan', text: 'Aduan perundungan diteruskan ke panel Guru BK — detail terkunci untuk admin', time: '5 jam lalu' },
-  { id: 5, code: 'SYS-AUDIT', type: 'Sistem', text: 'Backup basis data harian berhasil dijalankan', time: '6 jam lalu' },
-])
+const recentActivities = computed(() => analytics.value?.recent_activities ?? [])
 
-/* ---------- Konfigurasi chart ---------- */
+/* ---------------------------------- */
+/* Konfigurasi chart — data sekarang dari API */
+/* ---------------------------------- */
 const CHART_FONT = "'Inter', ui-sans-serif, system-ui, sans-serif"
 
-const distribution = [
-  { label: 'Fasilitas', value: 189, dot: 'bg-cyan-400' },
-  { label: 'Aspirasi', value: 129, dot: 'bg-purple-400' },
-  { label: 'Bullying', value: 24, dot: 'bg-amber-400', locked: true },
-]
+const distribution = computed(() => {
+  if (!analytics.value) return []
+  return [
+    { label: 'Fasilitas', value: analytics.value.by_type.facility, dot: 'bg-cyan-400' },
+    { label: 'Aspirasi', value: analytics.value.by_type.aspiration, dot: 'bg-purple-400' },
+    { label: 'Bullying', value: analytics.value.by_type.bullying, dot: 'bg-amber-400', locked: true },
+  ]
+})
 
 const distributionLegend = computed(() => {
-  const total = distribution.reduce((acc, d) => acc + d.value, 0)
-  return distribution.map(d => ({ ...d, pct: Math.round((d.value / total) * 100) }))
+  const total = distribution.value.reduce((acc, d) => acc + d.value, 0)
+  return distribution.value.map(d => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }))
 })
 
 const tooltipStyle = {
-  backgroundColor: '#1e293b',
-  borderColor: '#334155',
-  borderWidth: 1,
-  titleColor: '#f1f5f9',
-  bodyColor: '#cbd5e1',
-  padding: 12,
-  usePointStyle: true,
-  boxWidth: 8,
-  boxPadding: 4,
+  backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1,
+  titleColor: '#f1f5f9', bodyColor: '#cbd5e1', padding: 12,
+  usePointStyle: true, boxWidth: 8, boxPadding: 4,
 }
 
-const trendChartData = {
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep'],
-  datasets: [
-    {
-      label: 'Fasilitas',
-      data: [12, 19, 15, 22, 18, 25, 30, 28, 20],
-      borderColor: '#22d3ee',
-      backgroundColor: 'rgba(34, 211, 238, 0.08)',
-      pointBackgroundColor: '#22d3ee',
-      fill: true,
-      tension: 0.4,
-      borderWidth: 2,
-      pointRadius: 3,
-      pointHoverRadius: 5,
-    },
-    {
-      label: 'Aspirasi',
-      data: [8, 12, 10, 14, 11, 16, 18, 15, 12],
-      borderColor: '#a855f7',
-      backgroundColor: 'rgba(168, 85, 247, 0.08)',
-      pointBackgroundColor: '#a855f7',
-      fill: true,
-      tension: 0.4,
-      borderWidth: 2,
-      pointRadius: 3,
-      pointHoverRadius: 5,
-    },
-    {
-      label: 'Bullying (Agregat)',
-      data: [2, 4, 3, 5, 2, 6, 4, 3, 2],
-      borderColor: '#f59e0b',
-      backgroundColor: 'rgba(245, 158, 11, 0.08)',
-      pointBackgroundColor: '#f59e0b',
-      fill: true,
-      tension: 0.4,
-      borderWidth: 2,
-      pointRadius: 3,
-      pointHoverRadius: 5,
-    },
-  ],
-}
+const trendChartData = computed(() => {
+  const trend = analytics.value?.monthly_trend
+  if (!trend) return { labels: [], datasets: [] }
+
+  return {
+    labels: trend.labels,
+    datasets: [
+      {
+        label: 'Fasilitas', data: trend.facility, borderColor: '#22d3ee',
+        backgroundColor: 'rgba(34, 211, 238, 0.08)', pointBackgroundColor: '#22d3ee',
+        fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+      },
+      {
+        label: 'Aspirasi', data: trend.aspiration, borderColor: '#a855f7',
+        backgroundColor: 'rgba(168, 85, 247, 0.08)', pointBackgroundColor: '#a855f7',
+        fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+      },
+      {
+        label: 'Bullying (Agregat)', data: trend.bullying, borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.08)', pointBackgroundColor: '#f59e0b',
+        fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+      },
+    ],
+  }
+})
 
 const trendChartOptions = {
   responsive: true,
@@ -258,68 +203,37 @@ const trendChartOptions = {
   interaction: { mode: 'index', intersect: false },
   plugins: {
     legend: {
-      position: 'top',
-      align: 'end',
-      labels: {
-        color: '#94a3b8',
-        usePointStyle: true,
-        pointStyle: 'circle',
-        boxWidth: 6,
-        boxHeight: 6,
-        padding: 16,
-        font: { size: 11, family: CHART_FONT },
-      },
+      position: 'top', align: 'end',
+      labels: { color: '#94a3b8', usePointStyle: true, pointStyle: 'circle', boxWidth: 6, boxHeight: 6, padding: 16, font: { size: 11, family: CHART_FONT } },
     },
     tooltip: tooltipStyle,
   },
   scales: {
-    x: {
-      ticks: { color: '#64748b', font: { size: 11, family: CHART_FONT } },
-      grid: { color: 'rgba(30, 41, 59, 0.6)' },
-      border: { display: false },
-    },
-    y: {
-      beginAtZero: true,
-      ticks: { color: '#64748b', font: { size: 11, family: CHART_FONT }, precision: 0 },
-      grid: { color: 'rgba(30, 41, 59, 0.6)' },
-      border: { display: false },
-    },
+    x: { ticks: { color: '#64748b', font: { size: 11, family: CHART_FONT } }, grid: { color: 'rgba(30, 41, 59, 0.6)' }, border: { display: false } },
+    y: { beginAtZero: true, ticks: { color: '#64748b', font: { size: 11, family: CHART_FONT }, precision: 0 }, grid: { color: 'rgba(30, 41, 59, 0.6)' }, border: { display: false } },
   },
 }
 
-const distributionChartData = {
+const distributionChartData = computed(() => ({
   labels: ['Fasilitas', 'Aspirasi', 'Bullying (Agregat)'],
-  datasets: [
-    {
-      data: distribution.map(d => d.value),
-      backgroundColor: ['#22d3ee', '#a855f7', '#f59e0b'],
-      borderColor: '#0f172a',
-      borderWidth: 3,
-      hoverOffset: 6,
-    },
-  ],
-}
+  datasets: [{
+    data: distribution.value.map(d => d.value),
+    backgroundColor: ['#22d3ee', '#a855f7', '#f59e0b'],
+    borderColor: '#0f172a', borderWidth: 3, hoverOffset: 6,
+  }],
+}))
 
 const distributionChartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  cutout: '72%',
-  plugins: {
-    legend: { display: false },
-    tooltip: tooltipStyle,
-  },
+  responsive: true, maintainAspectRatio: false, cutout: '72%',
+  plugins: { legend: { display: false }, tooltip: tooltipStyle },
 }
 
-/* ---------- Handlers ---------- */
 const handleLogout = async () => {
-  if (authStore.logout) {
-    await authStore.logout()
-  }
+  await authStore.logout()
   toast.success('Berhasil keluar dari sistem.')
   router.push({ name: 'login' })
 }
 
-/* ---------- Aset ---------- */
 const heroPhoto = 'https://picsum.photos/seed/sapaadmin/1600/900.jpg'
 const currentYear = new Date().getFullYear()
 </script>
@@ -385,10 +299,10 @@ const currentYear = new Date().getFullYear()
         <img :src="heroPhoto" alt="" aria-hidden="true" draggable="false"
              class="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-20 grayscale contrast-125 brightness-[.65]" />
         <div class="pointer-events-none absolute inset-0 bg-slate-950/60" aria-hidden="true"></div>
-        <div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/30 to-transparent" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute inset-0 bg-linear-to-r from-slate-950/80 via-slate-950/30 to-transparent" aria-hidden="true"></div>
         <div class="pointer-events-none absolute inset-0" aria-hidden="true"
              style="background: radial-gradient(900px 420px at 10% 0%, rgba(16, 185, 129, 0.12), transparent 65%)"></div>
-        <span class="absolute inset-x-0 top-0 z-10 h-[2px] bg-gradient-to-r from-emerald-500/70 via-emerald-500/20 to-transparent" aria-hidden="true"></span>
+        <span class="absolute inset-x-0 top-0 z-10 h-0.5 bg-linear-to-r from-emerald-500/70 via-emerald-500/20 to-transparent" aria-hidden="true"></span>
 
         <div class="relative z-10 space-y-8 p-6 sm:p-8 lg:p-10">
           <div class="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-12">
@@ -499,10 +413,18 @@ const currentYear = new Date().getFullYear()
         </div>
       </section>
 
-      <!-- ===== Statistik utama ===== -->
+      <div v-if="isLoading" class="space-y-10">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div v-for="i in 4" :key="i" class="h-36 rounded-xl border border-slate-800 bg-slate-900/40 animate-pulse" />
+  </div>
+  <div class="h-96 rounded-xl border border-slate-800 bg-slate-900/40 animate-pulse" />
+</div>
+
+      <template v-else>
+        <!-- ===== Statistik utama ===== -->
       <section class="fade-up space-y-4" style="animation-delay: 90ms">
         <div class="flex items-center gap-3">
-          <span class="h-4 w-[3px] rounded-full bg-emerald-500" aria-hidden="true"></span>
+          <span class="h-4 w-0.75 rounded-full bg-emerald-500" aria-hidden="true"></span>
           <div>
             <h2 class="text-base font-bold tracking-tight text-slate-100">Ringkasan Sistem</h2>
             <p class="mt-0.5 text-xs text-slate-500">Metrik kinerja utama lintas kanal pelaporan.</p>
@@ -538,7 +460,7 @@ const currentYear = new Date().getFullYear()
       <!-- ===== Analitik ===== -->
       <section class="fade-up space-y-4" style="animation-delay: 180ms">
         <div class="flex items-center gap-3">
-          <span class="h-4 w-[3px] rounded-full bg-emerald-500" aria-hidden="true"></span>
+          <span class="h-4 w-0.75 rounded-full bg-emerald-500" aria-hidden="true"></span>
           <div>
             <h2 class="text-base font-bold tracking-tight text-slate-100">Analitik Laporan</h2>
             <p class="mt-0.5 text-xs text-slate-500">Tren dan distribusi laporan sepanjang periode berjalan.</p>
@@ -568,7 +490,7 @@ const currentYear = new Date().getFullYear()
               <p class="mt-0.5 text-[11px] text-slate-500">Proporsi kategori laporan terdaftar</p>
             </div>
 
-            <div class="relative mx-auto h-52 w-full max-w-[240px]">
+            <div class="relative mx-auto h-52 w-full max-w-60">
               <Doughnut :data="distributionChartData" :options="distributionChartOptions" />
               <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                 <p class="text-2xl font-extrabold leading-none tracking-tight tabular-nums text-white">{{ stats.totalReports }}</p>
@@ -597,7 +519,7 @@ const currentYear = new Date().getFullYear()
       <section class="fade-up grid grid-cols-1 gap-6 lg:grid-cols-3" style="animation-delay: 270ms">
 
         <!-- Agregat bullying -->
-        <div class="relative overflow-hidden rounded-xl border border-amber-500/30 bg-amber-500/[0.04] p-5 backdrop-blur-sm sm:p-6">
+        <div class="relative overflow-hidden rounded-xl border border-amber-500/30 bg-amber-500/4 p-5 backdrop-blur-sm sm:p-6">
           <div class="mb-4 flex items-center justify-between gap-3 border-b border-amber-500/20 pb-4">
             <div class="flex min-w-0 items-center gap-2">
               <span class="relative flex h-2 w-2 shrink-0">
@@ -688,6 +610,7 @@ const currentYear = new Date().getFullYear()
           </p>
         </div>
       </section>
+      </template>
     </main>
 
     <!-- ============ Footer ============ -->

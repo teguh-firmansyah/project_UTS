@@ -6,54 +6,79 @@ use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    /**
-     * Statistik menyeluruh untuk dashboard admin.
-     * KHUSUS bullying: hanya angka agregat, tidak ada isi laporan sama sekali.
-     */
     public function analytics(Request $request)
     {
-        // Ringkasan total per tipe
         $byType = Report::selectRaw('type, count(*) as total')
             ->groupBy('type')
             ->pluck('total', 'type');
 
-        // Ringkasan total per status (lintas semua tipe)
         $byStatus = Report::selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        // Tren bulanan (6 bulan terakhir) — untuk line/bar chart
-        $monthlyTrend = Report::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, count(*) as total")
+        $monthlyTrendRaw = Report::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, type, count(*) as total")
             ->where('created_at', '>=', now()->subMonths(6)->startOfMonth())
-            ->groupBy('month')
+            ->groupBy('month', 'type')
             ->orderBy('month')
-            ->get()
-            ->map(fn($row) => ['month' => $row->month, 'total' => $row->total]);
+            ->get();
 
-        // Rata-rata waktu penyelesaian (dalam jam), hanya laporan resolved
+        $months = collect(range(5, 0))->map(fn($i) => now()->subMonths($i)->format('Y-m'));
+        $monthlyTrend = [
+            'labels' => $months->map(fn($m) => \Carbon\Carbon::createFromFormat('Y-m', $m)->translatedFormat('M'))->values(),
+            'facility' => $months->map(fn($m) => $monthlyTrendRaw->where('month', $m)->where('type', 'facility')->first()->total ?? 0)->values(),
+            'aspiration' => $months->map(fn($m) => $monthlyTrendRaw->where('month', $m)->where('type', 'aspiration')->first()->total ?? 0)->values(),
+            'bullying' => $months->map(fn($m) => $monthlyTrendRaw->where('month', $m)->where('type', 'bullying')->first()->total ?? 0)->values(),
+        ];
+
         $avgResolutionHours = Report::whereNotNull('resolved_at')
             ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, resolved_at)) as avg_hours')
             ->value('avg_hours');
 
-        // Resolve rate keseluruhan
         $total = Report::count();
         $resolved = Report::where('status', 'resolved')->count();
+        $pending = Report::whereIn('status', ['pending', 'reviewing', 'in_progress'])->count();
+
+        $recentActivities = \App\Models\ReportStatusLog::with(['report:id,report_code,type,title'])
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function ($log) {
+                $type = $log->report->type;
+                $isBullying = $type === 'bullying';
+
+                $typeLabel = match ($type) {
+                    'facility' => 'Fasilitas',
+                    'aspiration' => 'Aspirasi',
+                    'bullying' => 'Perundungan',
+                };
+
+                $text = $isBullying
+                    ? "Kasus perundungan {$log->report->report_code} diperbarui — detail hanya dapat diakses Guru BK"
+                    : "{$log->report->title} diperbarui menjadi status " . strtoupper($log->new_status);
+
+                return [
+                    'id' => $log->id,
+                    'code' => $log->report->report_code,
+                    'type' => $typeLabel,
+                    'text' => $text,
+                    'time' => $log->created_at->diffForHumans(),
+                ];
+            });
 
         return response()->json([
             'summary' => [
                 'total_reports' => $total,
                 'resolved' => $resolved,
+                'pending' => $pending,
                 'resolve_rate' => $total > 0 ? round(($resolved / $total) * 100, 1) : 0,
-                'avg_resolution_hours' => $avgResolutionHours ? round($avgResolutionHours, 1) : null,
+                'avg_resolution_days' => $avgResolutionHours ? round($avgResolutionHours / 24, 1) : 0,
             ],
             'by_type' => [
                 'aspiration' => $byType['aspiration'] ?? 0,
                 'facility' => $byType['facility'] ?? 0,
-                // bullying: HANYA angka, tidak pernah expose detail apapun di endpoint ini
                 'bullying' => $byType['bullying'] ?? 0,
             ],
             'by_status' => [
@@ -64,6 +89,7 @@ class DashboardController extends Controller
                 'rejected' => $byStatus['rejected'] ?? 0,
             ],
             'monthly_trend' => $monthlyTrend,
+            'recent_activities' => $recentActivities,
             'user_counts' => [
                 'total' => User::count(),
                 'students' => User::role('student')->count(),
@@ -74,11 +100,6 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * List semua laporan lintas tipe untuk halaman Manajemen Laporan.
-     * Untuk baris bullying, field description/detail TIDAK di-load —
-     * hanya metadata (status, tanggal, prioritas).
-     */
     public function allReports(Request $request)
     {
         $query = Report::query()->with(['reporter:id,name']);
@@ -108,10 +129,6 @@ class DashboardController extends Controller
 
         $reports = $query->latest()->paginate(20);
 
-        // Transform manual (bukan ReportResource) supaya eksplisit:
-        // field description SENGAJA tidak pernah disertakan di sini,
-        // untuk SEMUA tipe laporan (bukan hanya bullying) — halaman ini
-        // adalah tabel manajemen, bukan tempat membaca isi laporan.
         $reports->getCollection()->transform(function ($report) {
             return [
                 'id' => $report->id,
@@ -131,10 +148,6 @@ class DashboardController extends Controller
         return response()->json($reports);
     }
 
-    /**
-     * Export laporan ke CSV — sederhana, tanpa dependency tambahan.
-     * Untuk laporan bullying, kolom deskripsi/detail dikosongkan.
-     */
     public function export(Request $request)
     {
         $query = Report::query()->with('reporter:id,name');
@@ -172,5 +185,20 @@ class DashboardController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function bullyingMetadata(Request $request)
+    {
+        $stats = Report::ofType('bullying')
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return response()->json([
+            'total' => $stats->sum(),
+            'waiting' => $stats['pending'] ?? 0,
+            'in_process' => ($stats['reviewing'] ?? 0) + ($stats['in_progress'] ?? 0),
+            'resolved' => $stats['resolved'] ?? 0,
+        ]);
     }
 }
