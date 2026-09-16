@@ -17,6 +17,11 @@ class ReportStatusLog extends Model
         'note',
     ];
 
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
     public function report(): BelongsTo
     {
         return $this->belongsTo(Report::class);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Report\StoreAspirationRequest;
+use App\Http\Resources\ReportResource;
 use App\Models\Report;
 use Illuminate\Http\Request;
 
@@ -11,13 +12,51 @@ class AspirationController extends Controller
 {
     public function index(Request $request)
     {
-        $aspirations = Report::query()
+        $userId = $request->user()->id;
+
+        $query = Report::query()
             ->ofType('aspiration')
             ->whereHas('aspirationDetail', fn($q) => $q->where('is_public', true))
             ->with(['reporter:id,name', 'aspirationDetail'])
-            ->withCount('comments')
-            ->latest()
-            ->paginate(10);
+            ->withCount('comments');
+
+        // Filter "Didukung" — hanya aspirasi yang di-vote user ini
+        if ($request->boolean('liked_only')) {
+            $query->whereHas('votes', fn($q) => $q->where('user_id', $userId));
+        }
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // Sort
+        if ($request->sort === 'top') {
+            $query->join('aspiration_report_details', 'reports.id', '=', 'aspiration_report_details.report_id')
+                ->orderByDesc('aspiration_report_details.upvotes_count')
+                ->select('reports.*');
+        } else {
+            $query->latest();
+        }
+
+        $aspirations = $query->paginate(20);
+
+        // Tandai is_liked per item — cek existing votes user untuk batch ini sekaligus (hindari N+1)
+        $reportIds = $aspirations->pluck('id');
+        $likedIds = \App\Models\AspirationVote::where('user_id', $userId)
+            ->whereIn('report_id', $reportIds)
+            ->pluck('report_id')
+            ->flip(); // jadi associative untuk cek cepat
+
+        $aspirations->getCollection()->transform(function ($report) use ($likedIds) {
+            $resource = (new ReportResource($report))->resolve();
+            $resource['is_liked'] = $likedIds->has($report->id);
+            return $resource;
+        });
 
         return response()->json($aspirations);
     }
@@ -60,10 +99,22 @@ class AspirationController extends Controller
             return response()->json(['message' => 'Laporan ini bukan aspirasi.'], 422);
         }
 
-        $report->aspirationDetail()->increment('upvotes_count');
+        $userId = $request->user()->id;
+        $existingVote = $report->votes()->where('user_id', $userId)->first();
+
+        if ($existingVote) {
+            $existingVote->delete();
+            $report->aspirationDetail()->decrement('upvotes_count');
+            $isLiked = false;
+        } else {
+            $report->votes()->create(['user_id' => $userId]);
+            $report->aspirationDetail()->increment('upvotes_count');
+            $isLiked = true;
+        }
 
         return response()->json([
-            'message' => 'Upvote berhasil.',
+            'message' => $isLiked ? 'Dukungan ditambahkan.' : 'Dukungan dibatalkan.',
+            'is_liked' => $isLiked,
             'upvotes_count' => $report->aspirationDetail->fresh()->upvotes_count,
         ]);
     }

@@ -97,6 +97,11 @@ class Report extends Model
         return $this->hasMany(Notification::class);
     }
 
+    public function votes(): HasMany
+    {
+        return $this->hasMany(AspirationVote::class);
+    }
+
     // Scope untuk query umum
     public function scopeOfType(Builder $query, string $type): Builder
     {
@@ -108,13 +113,12 @@ class Report extends Model
         return $query->where('status', $status);
     }
 
-    // Helper untuk load detail sesuai tipe secara dinamis
     public function loadTypeDetail(): static
     {
         return match ($this->type) {
-            'aspiration' => $this->load('aspirationDetail'),
-            'facility' => $this->load('facilityDetail'),
-            'bullying' => $this->load('bullyingDetail'),
+            'aspiration', 'aspirasi' => $this->loadMissing('aspirationDetail'),
+            'facility', 'fasilitas'   => $this->loadMissing('facilityDetail'),
+            'bullying', 'perundungan' => $this->loadMissing('bullyingDetail'),
             default => $this,
         };
     }
