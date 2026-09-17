@@ -103,4 +103,17 @@ export default {
     const { data } = await api.get('/api/admin/dashboard/analytics')
     return data
   },
+
+  async getAdminReports(params = {}) {
+    const { data } = await api.get('/api/admin/reports', { params })
+    return data
+  },
+
+  async exportAdminReports(params = {}) {
+    const response = await api.get('/api/admin/reports/export', {
+      params,
+      responseType: 'blob',
+    })
+    return response.data
+  },
 };

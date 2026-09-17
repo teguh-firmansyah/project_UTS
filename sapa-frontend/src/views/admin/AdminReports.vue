@@ -3,24 +3,10 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
+import reportService from '@/services/reportService'
 import {
-  BarChart3,
-  FileText,
-  Users,
-  LogOut,
-  Download,
-  Search,
-  X,
-  Filter,
-  ChevronDown,
-  Lock,
-  Eye,
-  EyeOff,
-  FileSpreadsheet,
-  Check,
-  Loader2,
-  Zap,
-  Settings
+  BarChart3, FileText, Users, LogOut, Download, Search, X, Filter,
+  ChevronDown, Lock, Eye, FileSpreadsheet, Check, Loader2, Zap, Settings,
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -28,8 +14,8 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const logoFailed = ref(false)
+const isLoading = ref(true)
 
-/* Navigasi panel */
 const navItems = [
   { label: 'Analitik', to: '/admin/dashboard', icon: BarChart3 },
   { label: 'Semua Laporan', to: '/admin/reports', icon: FileText },
@@ -39,97 +25,68 @@ const navItems = [
 
 const isActive = (item) => route.path === item.to || route.path.startsWith(item.to + '/')
 
-/* State filter & pencarian */
+/* ---------------------------------- */
+/* State filter                        */
+/* ---------------------------------- */
 const searchQuery = ref('')
 const selectedType = ref('all')
 const selectedStatus = ref('all')
 const selectedPriority = ref('all')
 
-/* State modal */
-const showExportModal = ref(false)
-const showMetadataModal = ref(false)
-const selectedMetadata = ref(null)
-const showDetailModal = ref(false)
-const selectedDetail = ref(null)
+/* Mapping UI (Indonesia) <-> backend (English) */
+const TYPE_MAP_REVERSE = { Fasilitas: 'facility', Aspirasi: 'aspiration', Bullying: 'bullying' }
+const STATUS_MAP = { pending: 'Menunggu', reviewing: 'Ditinjau', in_progress: 'Diproses', resolved: 'Selesai', rejected: 'Ditolak' }
+const STATUS_MAP_REVERSE = { Menunggu: 'pending', Ditinjau: 'reviewing', Diproses: 'in_progress', Selesai: 'resolved', Ditolak: 'rejected' }
+const PRIORITY_MAP = { urgent: 'Mendesak', high: 'Tinggi', medium: 'Sedang', low: 'Biasa' }
 
-/* Tanggal hari ini */
-const getTodayDate = () => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+/* ---------------------------------- */
+/* Data laporan — sekarang dari API    */
+/* ---------------------------------- */
+const reports = ref([])
+const totalReportsCount = ref(0)
+
+async function loadReports() {
+  isLoading.value = true
+  try {
+    const params = {}
+    if (selectedType.value !== 'all') params.type = TYPE_MAP_REVERSE[selectedType.value]
+    if (selectedStatus.value !== 'all') params.status = STATUS_MAP_REVERSE[selectedStatus.value]
+    if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
+
+    const data = await reportService.getAdminReports(params)
+
+    reports.value = data.data.map((r) => ({
+      id: r.id,
+      report_code: r.report_code,
+      title: r.type === 'bullying' ? '[TERKUNCI] Laporan Kejadian Perundungan' : r.title,
+      description: r.type === 'bullying' ? 'Konten terproteksi privasi BK.' : null,
+      type: r.type === 'facility' ? 'Fasilitas' : r.type === 'aspiration' ? 'Aspirasi' : 'Bullying',
+      reporter: r.is_anonymous ? 'Anonim' : (r.reporter?.name ? `${r.reporter.name}` : '—'),
+      status: STATUS_MAP[r.status] ?? r.status,
+      priority: PRIORITY_MAP[r.priority] ?? r.priority,
+      date: r.created_at,
+    }))
+    totalReportsCount.value = data.total ?? reports.value.length
+  } catch {
+    toast.error('Gagal memuat daftar laporan.')
+  } finally {
+    isLoading.value = false
+  }
 }
 
-/* Formulir ekspor */
-const exportFormat = ref('excel')
-const exportTypeTarget = ref('all')
-const exportDate = ref(getTodayDate())
-const isExporting = ref(false)
+onMounted(loadReports)
 
-/* Data laporan */
-const reports = ref([
-  {
-    id: 1,
-    report_code: 'LAP-2026-089',
-    title: 'Kerusakan Proyektor di Ruang Lab Komputer 2',
-    description: 'Proyektor tiba-tiba mati total dan tercium bau sangit saat jam pelajaran Informatika ke-3.',
-    type: 'Fasilitas',
-    reporter: 'Ahmad Rizky (Siswa)',
-    status: 'Diproses',
-    priority: 'Tinggi',
-    date: '2026-09-15',
-    location: 'Lab Komputer 2'
-  },
-  {
-    id: 2,
-    report_code: 'LAP-2026-088',
-    title: 'Usulan Penambahan Fasilitas Tempat Sampah Pilah',
-    description: 'Mohon disediakan tempat sampah terpisah untuk organik dan anorganik di sekitar area kantin belakang.',
-    type: 'Aspirasi',
-    reporter: 'Siti Aminah (Siswa)',
-    status: 'Selesai',
-    priority: 'Sedang',
-    date: '2026-09-15',
-    location: 'Kantin Belakang'
-  },
-  {
-    id: 3,
-    report_code: 'BUL-2026-012',
-    title: '[TERKUNCI] Laporan Kejadian Perundungan',
-    description: 'Konten terproteksi privasi BK.',
-    type: 'Bullying',
-    reporter: 'Anonim',
-    status: 'Diproses BK',
-    priority: 'Mendesak',
-    date: '2026-09-14',
-    location: 'Lingkungan Sekolah'
-  },
-  {
-    id: 4,
-    report_code: 'LAP-2026-085',
-    title: 'Pintu Toilet Lantai 2 Rusak/Tidak Bisa Dikunci',
-    description: 'Grendel pintu toilet siswa laki-laki nomor 2 lepas sehingga tidak bisa dikunci dari dalam.',
-    type: 'Fasilitas',
-    reporter: 'Budi Santoso (Siswa)',
-    status: 'Menunggu',
-    priority: 'Tinggi',
-    date: '2026-09-10',
-    location: 'Toilet Samping Lab Fisika'
-  }
-])
+let searchDebounce = null
+watch(searchQuery, () => {
+  clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(loadReports, 400)
+})
+watch([selectedType, selectedStatus], loadReports)
 
-/* Filter */
+/* Prioritas tetap difilter di client karena backend belum sediakan filter ini */
 const filteredReports = computed(() => {
-  return reports.value.filter(item => {
-    const matchSearch = item.report_code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                        item.title.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchType = selectedType.value === 'all' || item.type === selectedType.value
-    const matchStatus = selectedStatus.value === 'all' || item.status === selectedStatus.value
-    const matchPriority = selectedPriority.value === 'all' || item.priority === selectedPriority.value
-
-    return matchSearch && matchType && matchStatus && matchPriority
-  })
+  if (selectedPriority.value === 'all') return reports.value
+  return reports.value.filter((item) => item.priority === selectedPriority.value)
 })
 
 const hasActiveFilters = computed(() =>
@@ -144,13 +101,12 @@ const clearFilters = () => {
   selectedPriority.value = 'all'
 }
 
-/* Pil status */
 const statusPills = [
-  { value: 'all',        label: 'Semua',       active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
-  { value: 'Menunggu',   label: 'Menunggu',    active: 'border-amber-500/50 bg-amber-500/15 text-amber-400' },
-  { value: 'Diproses',   label: 'Diproses',    active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
-  { value: 'Diproses BK', label: 'Diproses BK', active: 'border-blue-500/50 bg-blue-500/15 text-blue-400' },
-  { value: 'Selesai',    label: 'Selesai',     active: 'border-slate-600 bg-slate-700/40 text-slate-200' },
+  { value: 'all', label: 'Semua', active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
+  { value: 'Menunggu', label: 'Menunggu', active: 'border-amber-500/50 bg-amber-500/15 text-amber-400' },
+  { value: 'Diproses', label: 'Diproses', active: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400' },
+  { value: 'Ditinjau', label: 'Ditinjau', active: 'border-blue-500/50 bg-blue-500/15 text-blue-400' },
+  { value: 'Selesai', label: 'Selesai', active: 'border-slate-600 bg-slate-700/40 text-slate-200' },
 ]
 
 const pillIdle = 'border-slate-800 bg-slate-950/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
@@ -161,7 +117,6 @@ const statusCounts = computed(() => {
   return counts
 })
 
-/* Helper badge */
 const getTypeBadgeClass = (type) => {
   switch (type) {
     case 'Fasilitas': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
@@ -175,19 +130,10 @@ const getStatusBadgeClass = (status) => {
   switch (status) {
     case 'Selesai': return 'bg-slate-500/10 text-slate-300 border-slate-500/20'
     case 'Diproses': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-    case 'Diproses BK': return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+    case 'Ditinjau': return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
     case 'Menunggu': return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
     case 'Ditolak': return 'bg-red-500/10 text-red-400 border-red-500/20'
     default: return 'bg-slate-800 text-slate-300 border-slate-700'
-  }
-}
-
-const getPriorityBadgeClass = (priority) => {
-  switch (priority) {
-    case 'Mendesak': return 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-    case 'Tinggi': return 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-    case 'Sedang': return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-    default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20'
   }
 }
 
@@ -220,110 +166,68 @@ const formatDate = (d) => {
   return isNaN(date.getTime()) ? d : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/* Ekspor */
+/* ---------------------------------- */
+/* Ekspor — sekarang panggil backend, bukan generate CSV di client */
+/* ---------------------------------- */
+const showExportModal = ref(false)
+const exportFormat = ref('excel') // catatan: backend hanya sediakan CSV, opsi 'pdf' di UI tetap kirim CSV untuk saat ini
+const exportTypeTarget = ref('all')
+const getTodayDate = () => new Date().toISOString().split('T')[0]
+const exportDate = ref(getTodayDate())
+const isExporting = ref(false)
+
 const openExportModal = () => {
   exportTypeTarget.value = selectedType.value
   exportDate.value = getTodayDate()
   showExportModal.value = true
 }
 
-const exportPreviewCount = computed(() => {
-  return reports.value.filter(item => {
-    const matchType = exportTypeTarget.value === 'all' || item.type === exportTypeTarget.value
-    const matchDate = !exportDate.value || item.date === exportDate.value
-    return matchType && matchDate
-  }).length
-})
-
-const handleExecuteExport = () => {
-  let dataToExport = reports.value.filter(item => {
-    const matchType = exportTypeTarget.value === 'all' || item.type === exportTypeTarget.value
-    const matchDate = !exportDate.value || item.date === exportDate.value
-    return matchType && matchDate
-  })
-
-  if (dataToExport.length === 0) {
-    toast.error('Tidak ada laporan yang sesuai filter ekspor pada tanggal tersebut.')
-    return
-  }
-
+const handleExecuteExport = async () => {
   isExporting.value = true
+  try {
+    const params = {}
+    if (exportTypeTarget.value !== 'all') params.type = TYPE_MAP_REVERSE[exportTypeTarget.value]
+    if (exportDate.value) params.date = exportDate.value
 
-  setTimeout(() => {
-    let fileContent = ""
-    let fileName = `Rekap_Laporan_${exportTypeTarget.value}_${exportDate.value}`
-    let mimeType = ""
+    const blob = await reportService.exportAdminReports(params)
 
-    if (exportFormat.value === 'excel') {
-      const headers = ["Kode Laporan", "Judul", "Tipe", "Pelapor", "Status", "Prioritas", "Tanggal"]
-      const rows = dataToExport.map(r => [
-        `"${r.report_code}"`,
-        `"${r.title.replace(/"/g, '""')}"`,
-        `"${r.type}"`,
-        `"${r.reporter}"`,
-        `"${r.status}"`,
-        `"${r.priority.label}"`,
-        `"${r.date}"`
-      ].join(","))
-
-      fileContent = [headers.join(","), ...rows].join("\n")
-      fileName += ".csv"
-      mimeType = "text/csv;charset=utf-8;"
-    } else {
-      fileContent = `==================================================\n`
-      fileContent += `       REKAP LAPORAN SAPA ADMIN (${exportDate.value})      \n`
-      fileContent += `==================================================\n`
-      fileContent += `Tipe Filter : ${exportTypeTarget.value}\n`
-      fileContent += `Tanggal     : ${exportDate.value}\n`
-      fileContent += `Total Data  : ${dataToExport.length} Laporan\n`
-      fileContent += `--------------------------------------------------\n\n`
-
-      dataToExport.forEach((r, idx) => {
-        fileContent += `${idx + 1}. [${r.report_code}] ${r.title}\n`
-        fileContent += `   Tipe: ${r.type} | Status: ${r.status} | Tgl: ${r.date}\n`
-        fileContent += `   Pelapor: ${r.reporter} | Prioritas: ${r.priority.label}\n`
-        fileContent += `--------------------------------------------------\n`
-      })
-
-      fileName += ".txt"
-      mimeType = "text/plain;charset=utf-8;"
-    }
-
-    const blob = new Blob([fileContent], { type: mimeType })
-    const link = document.createElement("a")
+    const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = fileName
+    link.download = `Rekap_Laporan_${exportTypeTarget.value}_${exportDate.value}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
 
-    isExporting.value = false
     showExportModal.value = false
-    toast.success('Rekap laporan berhasil diunduh.', {
-      description: `${dataToExport.length} laporan · ${exportFormat.value === 'excel' ? 'format CSV' : 'format ringkasan'}.`
-    })
-  }, 800)
-}
-
-/* Detail Mode */
-const handleViewDetail = (report) => {
-  if (report.type === 'Bullying') {
-    selectedMetadata.value = report
-    showMetadataModal.value = true
-  } else {
-    selectedDetail.value = report
-    showDetailModal.value = true
+    toast.success('Rekap laporan berhasil diunduh.')
+  } catch {
+    toast.error('Gagal mengekspor laporan.')
+  } finally {
+    isExporting.value = false
   }
 }
 
-/* Modal Helpers */
-const anyModalOpen = computed(() => showDetailModal.value || showMetadataModal.value || showExportModal.value)
+/* ---------------------------------- */
+/* Aksi baris — non-bullying ke halaman detail, bullying tetap modal metadata */
+/* ---------------------------------- */
+const showMetadataModal = ref(false)
+const selectedMetadata = ref(null)
+
+const handleViewDetail = (report) => {
+  if (report.isBullying) {
+    selectedMetadata.value = report
+    showMetadataModal.value = true
+  } else {
+    router.push({ name: 'admin-report-detail', params: { id: report.id } })
+  }
+}
+
+const anyModalOpen = computed(() => showMetadataModal.value || showExportModal.value)
 
 const handleEscKey = (e) => {
   if (e.key !== 'Escape') return
   if (showExportModal.value) showExportModal.value = false
   else if (showMetadataModal.value) showMetadataModal.value = false
-  else if (showDetailModal.value) showDetailModal.value = false
 }
 
 watch(anyModalOpen, (open) => {
@@ -336,11 +240,8 @@ onBeforeUnmount(() => {
   document.body.style.overflow = ''
 })
 
-/* Logout */
 const handleLogout = async () => {
-  if (authStore?.logout) {
-    await authStore.logout()
-  }
+  await authStore.logout()
   toast.success('Berhasil keluar dari sistem.')
   router.push({ name: 'login' })
 }
@@ -543,8 +444,15 @@ const currentYear = new Date().getFullYear()
           <p class="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Aksi</p>
         </div>
 
+        <div v-if="isLoading" class="divide-y divide-slate-800/70">
+  <div v-for="i in 4" :key="i" class="px-5 py-4 sm:px-6">
+    <div class="h-4 w-28 rounded bg-slate-800 animate-pulse mb-2"></div>
+    <div class="h-4 w-64 rounded bg-slate-800 animate-pulse"></div>
+  </div>
+</div>
+
         <!-- Baris laporan -->
-        <div v-if="reportRows.length > 0" class="divide-y divide-slate-800/70">
+        <div v-else-if="reportRows.length > 0" class="divide-y divide-slate-800/70">
           <article
             v-for="(item, i) in reportRows"
             :key="item.id"
@@ -680,102 +588,6 @@ const currentYear = new Date().getFullYear()
         </p>
       </div>
     </footer>
-
-    <!-- ============ Modal detail (mode baca) ============ -->
-    <div
-      v-if="showDetailModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="admin-detail-title"
-    >
-      <div class="backdrop-in absolute inset-0 bg-slate-950/80 backdrop-blur-sm" aria-hidden="true" @click="showDetailModal = false"></div>
-
-      <div class="modal-panel relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/50">
-        <span class="absolute inset-x-0 top-0 z-20 h-[2px] bg-gradient-to-r from-emerald-500/70 via-emerald-500/20 to-transparent" aria-hidden="true"></span>
-
-        <!-- Kepala modal -->
-        <div class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800/70 px-5 py-4">
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-emerald-400">{{ selectedDetail?.report_code }}</span>
-              <span class="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                <EyeOff class="h-3 w-3" />
-                Akses Baca Saja
-              </span>
-            </div>
-            <h3 id="admin-detail-title" class="mt-2.5 text-base font-bold leading-snug tracking-tight text-white">{{ selectedDetail?.title }}</h3>
-          </div>
-
-          <button
-            type="button"
-            @click="showDetailModal = false"
-            aria-label="Tutup"
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors duration-200 hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
-          >
-            <X class="h-4 w-4" />
-          </button>
-        </div>
-
-        <!-- Badan modal -->
-        <div class="modal-scroll min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium uppercase" :class="getTypeBadgeClass(selectedDetail?.type)">
-              <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
-              {{ selectedDetail?.type }}
-            </span>
-            <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-medium" :class="getStatusBadgeClass(selectedDetail?.status)">
-              <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
-              {{ selectedDetail?.status }}
-            </span>
-          </div>
-
-          <dl class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3">
-              <dt class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Pelapor</dt>
-              <dd class="mt-1 truncate text-xs font-medium text-slate-200">{{ selectedDetail?.reporter }}</dd>
-            </div>
-            <div class="rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3">
-              <dt class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Lokasi</dt>
-              <dd class="mt-1 truncate text-xs font-medium text-slate-200">{{ selectedDetail?.location || '—' }}</dd>
-            </div>
-            <div class="rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3">
-              <dt class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Tanggal Laporan</dt>
-              <dd class="mt-1 text-xs font-medium text-slate-200">{{ formatDate(selectedDetail?.date) }}</dd>
-            </div>
-            <div class="rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3">
-              <dt class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Prioritas</dt>
-              <dd class="mt-1">
-                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold" :class="getPriorityBadgeClass(selectedDetail?.priority)">
-                  {{ selectedDetail?.priority }}
-                </span>
-              </dd>
-            </div>
-          </dl>
-
-          <div class="space-y-2">
-            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Deskripsi / Kronologi</p>
-            <p class="rounded-lg border border-slate-800 bg-slate-950/60 p-3.5 text-xs leading-relaxed text-slate-300">
-              {{ selectedDetail?.description || 'Tidak ada deskripsi tambahan.' }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Kaki modal -->
-        <div class="shrink-0 border-t border-slate-800/70 bg-slate-950/30 p-5">
-          <div class="flex flex-col-reverse gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-            <p class="text-[10px] leading-relaxed text-slate-600">Perubahan status ditangani oleh petugas kanal terkait (Sarpras / BK).</p>
-            <button
-              type="button"
-              @click="showDetailModal = false"
-              class="inline-flex w-full items-center justify-center rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-slate-600 hover:text-white active:scale-[.97] sm:w-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-            >
-              Tutup
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- ============ Modal metadata bullying ============ -->
     <div
@@ -948,7 +760,7 @@ const currentYear = new Date().getFullYear()
           <!-- Pratinjau jumlah -->
           <div class="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/40 px-3.5 py-3">
             <p class="text-[11px] text-slate-500">Laporan sesuai filter ekspor</p>
-            <p class="text-sm font-extrabold tabular-nums text-white">{{ exportPreviewCount }}</p>
+            <p class="text-sm font-extrabold tabular-nums text-white">{{ totalReportsCount }}</p>
           </div>
 
           <!-- Catatan privasi -->
