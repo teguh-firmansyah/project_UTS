@@ -146,6 +146,14 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin'] },
   },
 
+  {
+    path: '/admin/reports/:id',
+    name: 'admin-report-detail',
+    component: () => import('@/views/admin/AdminReportDetailView.vue'),
+    meta: { requiresAuth: true, roles: ['admin'] },
+    props: true,
+  },
+
   // ================= FALLBACK =================
   {
     path: '/unauthorized',

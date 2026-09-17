@@ -152,35 +152,32 @@ class DashboardController extends Controller
     {
         $query = Report::query()->with('reporter:id,name');
 
-        if ($request->filled('type')) {
+        if ($request->filled('type') && $request->type !== 'all') {
             $query->where('type', $request->type);
+        }
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->date);
         }
 
         $reports = $query->latest()->get();
 
         $filename = 'laporan-sapa-' . now()->format('Y-m-d') . '.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
+        $headers = ['Content-Type' => 'text/csv', 'Content-Disposition' => "attachment; filename=\"{$filename}\""];
 
         $callback = function () use ($reports) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['Kode Laporan', 'Tipe', 'Judul', 'Status', 'Prioritas', 'Pelapor', 'Tanggal Dibuat']);
-
+            fputcsv($file, ['Kode Laporan', 'Judul', 'Tipe', 'Pelapor', 'Status', 'Prioritas', 'Tanggal']);
             foreach ($reports as $report) {
                 fputcsv($file, [
                     $report->report_code,
+                    $report->type === 'bullying' ? '[TERKUNCI] Laporan Perundungan' : $report->title,
                     $report->type,
-                    $report->title,
+                    $report->is_anonymous ? 'Anonim' : ($report->reporter->name ?? '-'),
                     $report->status,
                     $report->priority,
-                    $report->is_anonymous ? 'Anonim' : ($report->reporter->name ?? '-'),
                     $report->created_at->format('Y-m-d H:i'),
                 ]);
             }
-
             fclose($file);
         };
 

@@ -1,3 +1,323 @@
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { toast } from 'vue-sonner'
+import userService from '@/services/userService'
+import {
+  Users, UserCheck, GraduationCap, ShieldCheck, LogOut, Plus, Search, X,
+  ChevronDown, Pencil, KeyRound, Ban, CheckCircle2, Trash2, UserX,
+  ChevronLeft, ChevronRight, Lock, User, Mail, IdCard, Check, AlertTriangle,
+  BarChart3, FileText, Settings, Loader2,
+} from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+const logoFailed = ref(false)
+const currentYear = new Date().getFullYear()
+const isLoading = ref(true)
+
+const navItems = [
+  { label: 'Analitik', to: '/admin/dashboard', icon: BarChart3 },
+  { label: 'Semua Laporan', to: '/admin/reports', icon: FileText },
+  { label: 'Manajemen User', to: '/admin/users', icon: Users },
+  { label: 'Pengaturan', to: '/admin/settings', icon: Settings },
+]
+
+const isActive = (item) => route?.path === item.to
+
+/* ---------------------------------- */
+/* Mapping role backend (en) <-> label UI (id) */
+/* ---------------------------------- */
+const ROLE_TO_LABEL = { student: 'Siswa', staff: 'Guru', counselor: 'Guru BK', admin: 'Admin' }
+const LABEL_TO_ROLE = { Siswa: 'student', Guru: 'staff', 'Guru BK': 'counselor', Admin: 'admin' }
+
+/* ---------------------------------- */
+/* Data pengguna — sekarang dari API   */
+/* ---------------------------------- */
+const users = ref([])
+const totalUsers = ref(0)
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+const lastPageFromApi = ref(1)
+
+const searchQuery = ref('')
+const selectedRole = ref('all')
+const selectedStatus = ref('all')
+
+async function loadUsers() {
+  isLoading.value = true
+  try {
+    const params = { page: currentPage.value }
+    if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
+    if (selectedRole.value !== 'all') params.role = LABEL_TO_ROLE[selectedRole.value]
+    if (selectedStatus.value !== 'all') params.is_active = selectedStatus.value === 'Aktif' ? 1 : 0
+
+    const data = await userService.getUsers(params)
+
+    users.value = data.data.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      nip_nisn: u.identity_number ?? '—',
+      role: ROLE_TO_LABEL[u.roles?.[0]] ?? u.roles?.[0] ?? '—',
+      status: u.is_active ? 'Aktif' : 'Nonaktif',
+      isActive: u.is_active,
+      last_login: '—', // backend belum tracking last_login, lihat catatan di bawah
+    }))
+    totalUsers.value = data.total ?? users.value.length
+    lastPageFromApi.value = data.last_page ?? 1
+  } catch {
+    toast.error('Gagal memuat daftar pengguna.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(loadUsers)
+
+let searchDebounce = null
+watch(searchQuery, () => {
+  clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(() => { currentPage.value = 1; loadUsers() }, 400)
+})
+watch([selectedRole, selectedStatus], () => { currentPage.value = 1; loadUsers() })
+watch(currentPage, loadUsers)
+
+/* ---------------------------------- */
+/* Statistik — dihitung dari total data saat ini */
+/* ---------------------------------- */
+const statCards = computed(() => {
+  // Catatan: statistik ini idealnya dari endpoint agregat terpisah supaya akurat
+  // lintas semua halaman (bukan cuma yang termuat). Untuk saat ini pakai total dari
+  // paginated response (totalUsers) sebagai pendekatan.
+  return [
+    { label: 'Total Pengguna', value: totalUsers.value, num: 'text-slate-100', tile: 'border-slate-700 bg-slate-800 text-emerald-400', bar: 'bg-emerald-500', pct: 100, caption: 'Semua akun terdaftar', icon: Users },
+    { label: 'Siswa', value: statusCounts.value.roleStudent ?? 0, num: 'text-emerald-400', tile: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400', bar: 'bg-emerald-500', pct: 0, caption: 'Peran siswa', icon: GraduationCap },
+    { label: 'Pengguna Aktif', value: statusCounts.value['Aktif'] ?? 0, num: 'text-blue-400', tile: 'border-blue-500/30 bg-blue-500/10 text-blue-400', bar: 'bg-blue-500', pct: 0, caption: 'Status aktif saat ini', icon: UserCheck },
+    { label: 'Admin & Staf', value: (statusCounts.value.roleStaff ?? 0) + (statusCounts.value.roleAdmin ?? 0), num: 'text-purple-400', tile: 'border-purple-500/30 bg-purple-500/10 text-purple-400', bar: 'bg-purple-500', pct: 0, caption: 'Pengelola hak akses', icon: ShieldCheck },
+  ]
+})
+
+const statusPills = [
+  { label: 'Semua', value: 'all', active: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
+  { label: 'Aktif', value: 'Aktif', active: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
+  { label: 'Nonaktif', value: 'Nonaktif', active: 'border-slate-600 bg-slate-800 text-slate-200' },
+]
+
+const pillIdle = 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
+
+const statusCounts = computed(() => {
+  return users.value.reduce((acc, u) => {
+    acc.all = (acc.all || 0) + 1
+    acc[u.status] = (acc[u.status] || 0) + 1
+    if (u.role === 'Siswa') acc.roleStudent = (acc.roleStudent || 0) + 1
+    if (u.role === 'Guru') acc.roleStaff = (acc.roleStaff || 0) + 1
+    if (u.role === 'Admin') acc.roleAdmin = (acc.roleAdmin || 0) + 1
+    return acc
+  }, { all: 0 })
+})
+
+const hasActiveFilters = computed(() => searchQuery.value !== '' || selectedRole.value !== 'all' || selectedStatus.value !== 'all')
+
+/* Filter & pagination sekarang di server — tableRows langsung dari users */
+const totalPages = computed(() => lastPageFromApi.value)
+const filteredUsers = computed(() => users.value) // sudah difilter server-side
+
+const tableRows = computed(() =>
+  users.value.map(u => ({
+    ...u,
+    avatarClass: getRoleAvatarClass(u.role),
+    roleBadge: getRoleBadgeClass(u.role),
+  }))
+)
+
+/* ---------------------------------- */
+/* Modal state                         */
+/* ---------------------------------- */
+const showUserModal = ref(false)
+const showResetModal = ref(false)
+const showDeleteModal = ref(false)
+const isEditing = ref(false)
+const selectedUser = ref(null)
+const isSaving = ref(false)
+const isResetting = ref(false)
+const isDeleting = ref(false)
+
+const userForm = ref({ name: '', email: '', nip_nisn: '', role: 'Siswa', status: 'Aktif', password: '' })
+const userErrors = ref({})
+
+const roleOptions = [
+  { value: 'Siswa', label: 'Siswa', desc: 'Akses terbatas untuk aspirasi', active: 'border-blue-500/50 bg-blue-500/10', dot: 'bg-blue-400' },
+  { value: 'Guru', label: 'Guru (Sarpras)', desc: 'Penanganan laporan fasilitas', active: 'border-emerald-500/50 bg-emerald-500/10', dot: 'bg-emerald-400' },
+  { value: 'Guru BK', label: 'Guru BK', desc: 'Akses laporan bimbingan & perundungan', active: 'border-amber-500/50 bg-amber-500/10', dot: 'bg-amber-400' },
+  { value: 'Admin', label: 'Admin', desc: 'Akses penuh ke seluruh sistem', active: 'border-purple-500/50 bg-purple-500/10', dot: 'bg-purple-400' },
+]
+
+const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : ''
+
+const getRoleAvatarClass = (role) => {
+  switch (role) {
+    case 'Admin': return 'border-purple-500/40 bg-purple-500/10 text-purple-300'
+    case 'Guru BK': return 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+    case 'Guru': return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+    default: return 'border-blue-500/40 bg-blue-500/10 text-blue-300'
+  }
+}
+
+const getRoleBadgeClass = (role) => {
+  switch (role) {
+    case 'Admin': return 'border-purple-500/30 bg-purple-500/10 text-purple-400'
+    case 'Guru BK': return 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+    case 'Guru': return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+    default: return 'border-blue-500/30 bg-blue-500/10 text-blue-400'
+  }
+}
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  selectedRole.value = 'all'
+  selectedStatus.value = 'all'
+}
+
+const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
+const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
+
+const openCreateModal = () => {
+  isEditing.value = false
+  userForm.value = { name: '', email: '', nip_nisn: '', role: 'Siswa', status: 'Aktif', password: '' }
+  userErrors.value = {}
+  showUserModal.value = true
+}
+
+const openEditModal = (user) => {
+  isEditing.value = true
+  selectedUser.value = user
+  userForm.value = { name: user.name, email: user.email, nip_nisn: user.nip_nisn, role: user.role, status: user.status, password: '' }
+  userErrors.value = {}
+  showUserModal.value = true
+}
+
+const openResetPasswordModal = (user) => {
+  selectedUser.value = user
+  showResetModal.value = true
+}
+
+const openDeleteModal = (user) => {
+  selectedUser.value = user
+  showDeleteModal.value = true
+}
+
+/* ---------------------------------- */
+/* Aksi — sekarang terhubung API       */
+/* ---------------------------------- */
+async function toggleUserStatus(user) {
+  try {
+    await userService.toggleActive(user.id)
+    user.isActive = !user.isActive
+    user.status = user.isActive ? 'Aktif' : 'Nonaktif'
+    toast.success(`Akun ${user.name} berhasil ${user.isActive ? 'diaktifkan' : 'dinonaktifkan'}.`)
+  } catch (error) {
+    toast.error(error?.response?.data?.message || 'Gagal mengubah status akun.')
+  }
+}
+
+async function handleSaveUser() {
+  userErrors.value = {}
+  if (!userForm.value.name.trim()) userErrors.value.name = 'Nama wajib diisi'
+  if (!userForm.value.email.trim()) userErrors.value.email = 'Email wajib diisi'
+  if (!userForm.value.nip_nisn.trim()) userErrors.value.nip_nisn = 'NIP/NISN wajib diisi'
+  if (!isEditing.value && !userForm.value.password.trim()) userErrors.value.password = 'Password wajib diisi untuk akun baru'
+
+  if (Object.keys(userErrors.value).length > 0) return
+
+  isSaving.value = true
+  try {
+    if (isEditing.value) {
+      await userService.updateUser(selectedUser.value.id, {
+        name: userForm.value.name,
+        email: userForm.value.email,
+        identity_number: userForm.value.nip_nisn,
+      })
+
+      // Role di-update terpisah kalau berubah
+      if (userForm.value.role !== selectedUser.value.role) {
+        await userService.assignRole(selectedUser.value.id, LABEL_TO_ROLE[userForm.value.role])
+      }
+
+      // Status aktif di-toggle terpisah kalau berubah
+      const wantActive = userForm.value.status === 'Aktif'
+      if (wantActive !== selectedUser.value.isActive) {
+        await userService.toggleActive(selectedUser.value.id)
+      }
+
+      toast.success('Data pengguna berhasil diperbarui.')
+    } else {
+      await userService.createUser({
+        name: userForm.value.name,
+        email: userForm.value.email,
+        password: userForm.value.password,
+        identity_number: userForm.value.nip_nisn,
+        role: LABEL_TO_ROLE[userForm.value.role],
+      })
+      toast.success('Pengguna baru berhasil ditambahkan.')
+    }
+
+    showUserModal.value = false
+    await loadUsers()
+  } catch (error) {
+    const validationErrors = error?.response?.data?.errors
+    if (validationErrors) {
+      const fieldMap = { identity_number: 'nip_nisn' }
+      Object.entries(validationErrors).forEach(([key, msgs]) => {
+        userErrors.value[fieldMap[key] ?? key] = msgs[0]
+      })
+    }
+    toast.error(error?.response?.data?.message || 'Gagal menyimpan data pengguna.')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const generatedPassword = 'SAPA2026!'
+
+async function handleConfirmReset() {
+  isResetting.value = true
+  try {
+    await userService.resetPassword(selectedUser.value.id, generatedPassword)
+    toast.success(`Password ${selectedUser.value.name} berhasil direset.`)
+    showResetModal.value = false
+  } catch (error) {
+    toast.error(error?.response?.data?.message || 'Gagal mereset password.')
+  } finally {
+    isResetting.value = false
+  }
+}
+
+async function handleDeleteUser() {
+  isDeleting.value = true
+  try {
+    await userService.deleteUser(selectedUser.value.id)
+    toast.success(`Akun ${selectedUser.value.name} berhasil dihapus.`)
+    showDeleteModal.value = false
+    await loadUsers()
+  } catch (error) {
+    toast.error(error?.response?.data?.message || 'Gagal menghapus pengguna.')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+const handleLogout = async () => {
+  await authStore.logout()
+  toast.success('Berhasil keluar dari sistem.')
+  router.push({ name: 'login' })
+}
+</script>
+
 <template>
   <div class="sapa-root flex min-h-screen flex-col bg-slate-950 font-sans text-slate-100 antialiased selection:bg-emerald-500/25">
 
@@ -80,7 +400,7 @@
       <!-- ===== Statistik pengguna ===== -->
       <section class="fade-up space-y-4" style="animation-delay: 90ms">
         <div class="flex items-center gap-3">
-          <span class="h-4 w-[3px] rounded-full bg-emerald-500" aria-hidden="true"></span>
+          <span class="h-4 w-0.75 rounded-full bg-emerald-500" aria-hidden="true"></span>
           <div>
             <h2 class="text-base font-bold tracking-tight text-slate-100">Ringkasan Pengguna</h2>
             <p class="mt-0.5 text-xs text-slate-500">Komposisi peran dan status seluruh akun terdaftar.</p>
@@ -118,7 +438,7 @@
         <!-- Kepala seksi -->
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-slate-800/80 px-5 py-4 sm:px-6 sm:py-5">
           <div class="flex items-center gap-3">
-            <span class="h-4 w-[3px] rounded-full bg-emerald-500" aria-hidden="true"></span>
+            <span class="h-4 w-0.75 rounded-full bg-emerald-500" aria-hidden="true"></span>
             <div>
               <h2 class="text-base font-bold tracking-tight text-slate-100">Daftar Pengguna Terdaftar</h2>
               <p class="mt-0.5 text-xs text-slate-500">Kelola akun, peran, dan status aktivitas pengguna sistem.</p>
@@ -212,7 +532,15 @@
           <p class="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">Aksi</p>
         </div>
 
-        <!-- Baris pengguna -->
+        <div v-if="isLoading" class="divide-y divide-slate-800/70">
+  <div v-for="i in 5" :key="i" class="px-5 py-4 sm:px-6">
+    <div class="h-4 w-40 rounded bg-slate-800 animate-pulse mb-2"></div>
+    <div class="h-3 w-56 rounded bg-slate-800 animate-pulse"></div>
+  </div>
+</div>
+
+       <div v-else-if="tableRows.length > 0" class="divide-y divide-slate-800/70">
+         <!-- Baris pengguna -->
         <div v-if="tableRows.length > 0" class="divide-y divide-slate-800/70">
           <article
             v-for="(user, i) in tableRows"
@@ -220,7 +548,7 @@
             class="card-enter group relative flex flex-col gap-3 px-5 py-4 transition-colors duration-150 hover:bg-slate-800/40 sm:px-6 xl:grid xl:grid-cols-[minmax(0,1.5fr)_140px_100px_105px_150px_160px] xl:items-center xl:gap-x-4"
             :style="{ animationDelay: (i * 60) + 'ms' }"
           >
-            <span class="absolute bottom-3 left-0 top-3 w-[3px] rounded-r-full bg-emerald-500/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true"></span>
+            <span class="absolute bottom-3 left-0 top-3 w-0.75 rounded-r-full bg-emerald-500/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true"></span>
 
             <div class="flex min-w-0 items-center gap-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold transition-colors duration-150" :class="user.avatarClass">
@@ -311,6 +639,7 @@
             </div>
           </article>
         </div>
+       </div>
 
         <!-- Keadaan kosong -->
         <div v-else class="flex flex-col items-center px-6 py-16 text-center">
@@ -409,7 +738,7 @@
       <div class="backdrop-in absolute inset-0 bg-slate-950/80 backdrop-blur-sm" aria-hidden="true" @click="showUserModal = false"></div>
 
       <div class="modal-panel relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/50">
-        <span class="absolute inset-x-0 top-0 z-20 h-[2px] bg-gradient-to-r from-emerald-500/70 via-emerald-500/20 to-transparent" aria-hidden="true"></span>
+        <span class="absolute inset-x-0 top-0 z-20 h-0.5 bg-linear-to-r from-emerald-500/70 via-emerald-500/20 to-transparent" aria-hidden="true"></span>
 
         <!-- Kepala modal -->
         <div class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800/70 px-5 py-4">
@@ -494,6 +823,26 @@
               <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
               {{ userErrors.nip_nisn }}
             </p>
+
+            <div v-if="!isEditing">
+  <label for="uf-password" class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mt-5">Password Awal</label>
+  <div class="relative">
+    <Lock class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+    <input
+      id="uf-password"
+      v-model="userForm.password"
+      type="text"
+      placeholder="Minimal 8 karakter"
+      :aria-invalid="!!userErrors.password || undefined"
+      class="w-full rounded-lg border bg-slate-950/60 py-2.5 pl-10 pr-3.5 text-sm text-slate-100 placeholder-slate-500 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+      :class="userErrors.password ? 'border-red-400/60' : 'border-slate-800'"
+    />
+  </div>
+  <p v-if="userErrors.password" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
+    <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
+    {{ userErrors.password }}
+  </p>
+</div>
           </div>
 
           <!-- Peran: kartu radio semantik -->
@@ -528,7 +877,7 @@
                 :aria-pressed="userForm.status === 'Aktif'"
                 @click="userForm.status = 'Aktif'"
                 class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 active:scale-[.99]"
-                :class="userForm.status === 'Aktif' ? 'border-emerald-500/50 bg-emerald-500/[0.06] text-emerald-400' : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'"
+                :class="userForm.status === 'Aktif' ? 'border-emerald-500/50 bg-emerald-500/6 text-emerald-400' : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'"
               >
                 <span class="h-1.5 w-1.5 rounded-full" :class="userForm.status === 'Aktif' ? 'bg-emerald-400' : 'bg-slate-600'" aria-hidden="true"></span>
                 Aktif
@@ -587,7 +936,7 @@
       <div class="backdrop-in absolute inset-0 bg-slate-950/80 backdrop-blur-sm" aria-hidden="true" @click="showResetModal = false"></div>
 
       <div class="modal-panel relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-900 shadow-2xl shadow-black/50">
-        <span class="absolute inset-x-0 top-0 z-20 h-[2px] bg-gradient-to-r from-amber-500/70 via-amber-500/20 to-transparent" aria-hidden="true"></span>
+        <span class="absolute inset-x-0 top-0 z-20 h-0.5 bg-linear-to-r from-amber-500/70 via-amber-500/20 to-transparent" aria-hidden="true"></span>
 
         <!-- Kepala modal -->
         <div class="flex shrink-0 items-start justify-between gap-4 border-b border-amber-500/20 px-5 py-4">
@@ -623,7 +972,7 @@
             Kata sandi akan disetel ulang menjadi:
           </p>
 
-          <div class="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3 text-center font-mono text-sm font-bold tracking-wider text-amber-300">
+          <div class="rounded-lg border border-amber-500/25 bg-amber-500/6 p-3 text-center font-mono text-sm font-bold tracking-wider text-amber-300">
             SAPA2026!
           </div>
 
@@ -667,7 +1016,7 @@
       <div class="backdrop-in absolute inset-0 bg-slate-950/80 backdrop-blur-sm" aria-hidden="true" @click="showDeleteModal = false"></div>
 
       <div class="modal-panel relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-rose-500/30 bg-slate-900 shadow-2xl shadow-black/50">
-        <span class="absolute inset-x-0 top-0 z-20 h-[2px] bg-gradient-to-r from-rose-500/70 via-rose-500/20 to-transparent" aria-hidden="true"></span>
+        <span class="absolute inset-x-0 top-0 z-20 h-0.5 bg-linear-to-r from-rose-500/70 via-rose-500/20 to-transparent" aria-hidden="true"></span>
 
         <!-- Kepala modal -->
         <div class="flex shrink-0 items-start justify-between gap-4 border-b border-rose-500/20 px-5 py-4">
@@ -706,7 +1055,7 @@
             Seluruh hak akses pengguna ini pada sistem akan dicabut secara permanen.
           </p>
 
-          <div v-if="selectedUser?.role === 'Admin'" class="flex items-start gap-2.5 rounded-lg border border-rose-500/25 bg-rose-500/[0.06] px-3.5 py-3">
+          <div v-if="selectedUser?.role === 'Admin'" class="flex items-start gap-2.5 rounded-lg border border-rose-500/25 bg-rose-500/6 px-3.5 py-3">
             <AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-rose-400/90" />
             <p class="text-[11px] leading-relaxed text-slate-400">
               <span class="font-semibold text-rose-300">Akun Administrator.</span>
@@ -740,231 +1089,6 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { 
-  Users, 
-  UserCheck, 
-  GraduationCap, 
-  ShieldCheck, 
-  LogOut, 
-  Plus, 
-  Search, 
-  X, 
-  ChevronDown, 
-  Pencil, 
-  KeyRound, 
-  Ban, 
-  CheckCircle2, 
-  Trash2, 
-  UserX, 
-  ChevronLeft, 
-  ChevronRight, 
-  Lock, 
-  User, 
-  Mail, 
-  IdCard, 
-  Check, 
-  AlertTriangle,
-  BarChart3,
-  FileText,
-  Settings
-} from 'lucide-vue-next'
-
-const route = useRoute()
-
-// State Logo & Form
-const logoFailed = ref(false)
-const currentYear = new Date().getFullYear()
-
-// Navigasi Bar
-const navItems = [
-  { label: 'Analitik', to: '/admin/dashboard', icon: BarChart3 },
-  { label: 'Semua Laporan', to: '/admin/reports', icon: FileText },
-  { label: 'Manajemen User', to: '/admin/users', icon: Users },
-  { label: 'Pengaturan', to: '/admin/settings', icon: Settings },
-]
-
-const isActive = (item) => route?.path === item.to
-
-// Statistik Cards Data
-const statCards = ref([
-  { label: 'Total Pengguna', value: '124', num: 'text-slate-100', tile: 'border-slate-700 bg-slate-800 text-emerald-400', bar: 'bg-emerald-500', pct: 100, caption: 'Semua akun terdaftar', icon: Users },
-  { label: 'Siswa', value: '86', num: 'text-emerald-400', tile: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400', bar: 'bg-emerald-500', pct: 69, caption: '69% dari total akun', icon: GraduationCap },
-  { label: 'Pengguna Aktif', value: '110', num: 'text-blue-400', tile: 'border-blue-500/30 bg-blue-500/10 text-blue-400', bar: 'bg-blue-500', pct: 88, caption: 'Status aktif saat ini', icon: UserCheck },
-  { label: 'Admin & Staf', value: '12', num: 'text-purple-400', tile: 'border-purple-500/30 bg-purple-500/10 text-purple-400', bar: 'bg-purple-500', pct: 10, caption: 'Pengelola hak akses', icon: ShieldCheck }
-])
-
-// Filter & Table States
-const searchQuery = ref('')
-const selectedRole = ref('all')
-const selectedStatus = ref('all')
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-const statusPills = [
-  { label: 'Semua', value: 'all', active: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
-  { label: 'Aktif', value: 'Aktif', active: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
-  { label: 'Nonaktif', value: 'Nonaktif', active: 'border-slate-600 bg-slate-800 text-slate-200' }
-]
-
-const pillIdle = 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
-
-// Dummy Users Data
-const users = ref([
-  { id: 1, name: 'Ahmad Dahlan', email: 'ahmad@sekolah.sch.id', nip_nisn: '1029384756', role: 'Siswa', status: 'Aktif', isActive: true, last_login: '10 Min yang lalu' },
-  { id: 2, name: 'Siti Nurhaliza, M.Pd.', email: 'siti.bk@sekolah.sch.id', nip_nisn: '198503152010012003', role: 'Guru BK', status: 'Aktif', isActive: true, last_login: '1 Jam yang lalu' },
-  { id: 3, name: 'Budi Santoso', email: 'budi.admin@sekolah.sch.id', nip_nisn: '197805202005011002', role: 'Admin', status: 'Aktif', isActive: true, last_login: 'Sekarang' },
-  { id: 4, name: 'Eko Prasetyo', email: 'eko.sarpras@sekolah.sch.id', nip_nisn: '198211102008041001', role: 'Guru', status: 'Nonaktif', isActive: false, last_login: '3 Hari yang lalu' }
-])
-
-const totalUsers = computed(() => users.value.length)
-
-const statusCounts = computed(() => {
-  return users.value.reduce((acc, u) => {
-    acc.all = (acc.all || 0) + 1
-    acc[u.status] = (acc[u.status] || 0) + 1
-    return acc
-  }, { all: 0 })
-})
-
-const hasActiveFilters = computed(() => searchQuery.value !== '' || selectedRole.value !== 'all' || selectedStatus.value !== 'all')
-
-const filteredUsers = computed(() => {
-  return users.value.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          u.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          u.nip_nisn.includes(searchQuery.value)
-    const matchesRole = selectedRole.value === 'all' || u.role === selectedRole.value
-    const matchesStatus = selectedStatus.value === 'all' || u.status === selectedStatus.value
-    return matchesSearch && matchesRole && matchesStatus
-  })
-})
-
-const totalPages = computed(() => Math.ceil(filteredUsers.value.length / itemsPerPage.value) || 1)
-
-const tableRows = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return filteredUsers.value.slice(start, start + itemsPerPage.value).map(u => ({
-    ...u,
-    avatarClass: getRoleAvatarClass(u.role),
-    roleBadge: getRoleBadgeClass(u.role)
-  }))
-})
-
-// Modals State
-const showUserModal = ref(false)
-const showResetModal = ref(false)
-const showDeleteModal = ref(false)
-const isEditing = ref(false)
-const selectedUser = ref(null)
-
-const userForm = ref({ name: '', email: '', nip_nisn: '', role: 'Siswa', status: 'Aktif' })
-const userErrors = ref({})
-
-const roleOptions = [
-  { value: 'Siswa', label: 'Siswa', desc: 'Akses terbatas untuk aspirasi', active: 'border-blue-500/50 bg-blue-500/10', dot: 'bg-blue-400' },
-  { value: 'Guru', label: 'Guru (Sarpras)', desc: 'Penanganan laporan fasilitas', active: 'border-emerald-500/50 bg-emerald-500/10', dot: 'bg-emerald-400' },
-  { value: 'Guru BK', label: 'Guru BK', desc: 'Akses laporan bimbingan & perundungan', active: 'border-amber-500/50 bg-amber-500/10', dot: 'bg-amber-400' },
-  { value: 'Admin', label: 'Admin', desc: 'Akses penuh ke seluruh sistem', active: 'border-purple-500/50 bg-purple-500/10', dot: 'bg-purple-400' },
-]
-
-// Helpers
-const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : ''
-
-const getRoleAvatarClass = (role) => {
-  switch (role) {
-    case 'Admin': return 'border-purple-500/40 bg-purple-500/10 text-purple-300'
-    case 'Guru BK': return 'border-amber-500/40 bg-amber-500/10 text-amber-300'
-    case 'Guru': return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-    default: return 'border-blue-500/40 bg-blue-500/10 text-blue-300'
-  }
-}
-
-const getRoleBadgeClass = (role) => {
-  switch (role) {
-    case 'Admin': return 'border-purple-500/30 bg-purple-500/10 text-purple-400'
-    case 'Guru BK': return 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-    case 'Guru': return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-    default: return 'border-blue-500/30 bg-blue-500/10 text-blue-400'
-  }
-}
-
-// Handlers
-const clearFilters = () => {
-  searchQuery.value = ''
-  selectedRole.value = 'all'
-  selectedStatus.value = 'all'
-}
-
-const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
-const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
-
-const openCreateModal = () => {
-  isEditing.value = false
-  userForm.value = { name: '', email: '', nip_nisn: '', role: 'Siswa', status: 'Aktif' }
-  userErrors.value = {}
-  showUserModal.value = true
-}
-
-const openEditModal = (user) => {
-  isEditing.value = true
-  selectedUser.value = user
-  userForm.value = { ...user }
-  userErrors.value = {}
-  showUserModal.value = true
-}
-
-const openResetPasswordModal = (user) => {
-  selectedUser.value = user
-  showResetModal.value = true
-}
-
-const openDeleteModal = (user) => {
-  selectedUser.value = user
-  showDeleteModal.value = true
-}
-
-const toggleUserStatus = (user) => {
-  user.isActive = !user.isActive
-  user.status = user.isActive ? 'Aktif' : 'Nonaktif'
-}
-
-const handleSaveUser = () => {
-  userErrors.value = {}
-  if (!userForm.value.name) userErrors.value.name = 'Nama wajib diisi'
-  if (!userForm.value.email) userErrors.value.email = 'Email wajib diisi'
-
-  if (Object.keys(userErrors.value).length === 0) {
-    if (isEditing.value) {
-      const idx = users.value.findIndex(u => u.id === selectedUser.value.id)
-      if (idx !== -1) users.value[idx] = { ...users.value[idx], ...userForm.value, isActive: userForm.value.status === 'Aktif' }
-    } else {
-      users.value.push({
-        id: Date.now(),
-        ...userForm.value,
-        isActive: userForm.value.status === 'Aktif',
-        last_login: 'Belum pernah'
-      })
-    }
-    showUserModal.value = false
-  }
-}
-
-const handleConfirmReset = () => {
-  showResetModal.value = false
-}
-
-const handleDeleteUser = () => {
-  users.value = users.value.filter(u => u.id !== selectedUser.value.id)
-  showDeleteModal.value = false
-}
-
-const handleLogout = () => {
-  // Tambahkan logika logout sesuai kebutuhan
-}
-</script>
 <style scoped>
 /* ==========================================================================
    Animasi & Performa
