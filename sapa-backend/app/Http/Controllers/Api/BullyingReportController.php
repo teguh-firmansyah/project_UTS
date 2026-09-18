@@ -50,7 +50,6 @@ class BullyingReportController extends Controller
         ]);
     }
 
-    // BullyingReportController.php
     public function queue(Request $request)
     {
         $this->authorize('viewAny', Report::class);
@@ -85,13 +84,13 @@ class BullyingReportController extends Controller
         $user = $request->user();
 
         $report = Report::create([
-            'reporter_id' => $validated['is_anonymous'] ? null : $user->id,
+            'reporter_id' => $user->id,
             'type' => 'bullying',
-            'title' => 'Laporan Bullying', // generic, tidak dari input user
+            'title' => 'Laporan Bullying',
             'description' => $validated['description'],
             'is_anonymous' => $validated['is_anonymous'],
             'status' => 'pending',
-            'priority' => 'high', // bullying otomatis prioritas tinggi
+            'priority' => 'high',
         ]);
 
         $report->bullyingDetail()->create([

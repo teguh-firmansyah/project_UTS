@@ -198,4 +198,53 @@ class DashboardController extends Controller
             'resolved' => $stats['resolved'] ?? 0,
         ]);
     }
+
+    public function aspirations(Request $request)
+    {
+        $query = Report::query()
+            ->ofType('aspiration')
+            ->with(['reporter:id,name,class_name', 'aspirationDetail'])
+            ->withCount('comments');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('category')) {
+            $query->whereHas('aspirationDetail', function ($q) use ($request) {
+                $q->where('category', $request->category);
+            });
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $aspirations = $query->latest()->paginate(20);
+
+        $aspirations->getCollection()->transform(function ($report) {
+            return [
+                'id' => $report->id,
+                'report_code' => $report->report_code,
+                'title' => $report->title,
+                'description_excerpt' => str($report->description)->limit(150)->toString(),
+                'status' => $report->status,
+                'is_anonymous' => $report->is_anonymous,
+                'reporter' => ! $report->is_anonymous && $report->reporter
+                    ? ['name' => $report->reporter->name, 'class_name' => $report->reporter->class_name]
+                    : null,
+                'category' => $report->aspirationDetail?->category,
+                'upvotes_count' => $report->aspirationDetail?->upvotes_count ?? 0,
+                'is_public' => $report->aspirationDetail?->is_public ?? true,
+                'comments_count' => $report->comments_count,
+                'created_at' => $report->created_at->toIso8601String(),
+            ];
+        });
+
+        return response()->json($aspirations);
+    }
 }
