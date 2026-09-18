@@ -93,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword']);
 
         Route::get('/dashboard/bullying-metadata', [DashboardController::class, 'bullyingMetadata']);
+        Route::get('/aspirations', [DashboardController::class, 'aspirations']);
     });
 
     /*

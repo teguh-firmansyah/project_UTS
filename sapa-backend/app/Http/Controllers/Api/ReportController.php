@@ -111,6 +111,8 @@ class ReportController extends Controller
 
         $reports = Report::query()
             ->where('reporter_id', $user->id)
+            ->with(['reporter:id,name', 'assignee:id,name', 'aspirationDetail', 'facilityDetail'])
+            ->withCount('comments')
             ->latest()
             ->paginate($request->get('per_page', 10));
 
@@ -127,20 +129,20 @@ class ReportController extends Controller
         $stats = Report::query()
             ->where('reporter_id', $user->id)
             ->selectRaw("
-                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-                COUNT(CASE WHEN status = 'reviewing' THEN 1 END) as reviewing,
-                COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
-                COUNT(CASE WHEN status = 'resolved' THEN 1 END) as resolved,
-                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
-            ")
+            COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+            COUNT(CASE WHEN status = 'reviewing' THEN 1 END) as reviewing,
+            COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
+            COUNT(CASE WHEN status = 'resolved' THEN 1 END) as resolved,
+            COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
+        ")
             ->first();
 
         return response()->json([
-            'pending'     => (int) $stats->pending,
-            'reviewing'   => (int) $stats->reviewing,
-            'in_progress' => (int) $stats->in_progress,
-            'resolved'    => (int) $stats->resolved,
-            'rejected'    => (int) $stats->rejected,
+            'pending'     => (int) ($stats->pending ?? 0),
+            'reviewing'   => (int) ($stats->reviewing ?? 0),
+            'in_progress' => (int) ($stats->in_progress ?? 0),
+            'resolved'    => (int) ($stats->resolved ?? 0),
+            'rejected'    => (int) ($stats->rejected ?? 0),
         ]);
     }
 }

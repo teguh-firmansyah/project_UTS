@@ -67,7 +67,7 @@ class AspirationController extends Controller
         $user = $request->user();
 
         $report = Report::create([
-            'reporter_id' => $validated['is_anonymous'] ? null : $user->id,
+            'reporter_id' => $user->id,
             'type' => 'aspiration',
             'title' => $validated['title'],
             'description' => $validated['description'],
