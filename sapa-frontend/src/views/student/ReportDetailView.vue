@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import {
@@ -15,6 +15,9 @@ import {
   Clock,
   ShieldCheck,
   Lock,
+  ZoomIn,
+  Camera,
+  FileText,
 } from "lucide-vue-next";
 import reportService from "@/services/reportService";
 
@@ -23,7 +26,7 @@ const router = useRouter();
 
 const isLoading = ref(true);
 const isSubmittingComment = ref(false);
-const isLoadingComments = ref(true); 
+const isLoadingComments = ref(true);
 const newComment = ref("");
 const imageFailed = ref(false);
 
@@ -51,7 +54,7 @@ async function loadReport() {
       content: r.description,
       created_at: r.created_at,
       is_anonymous: r.is_anonymous,
-      image_url: r.attachments?.[0]?.url ?? null,
+      attachments: r.attachments ?? [],
       user: r.reporter
         ? { name: r.reporter.name, class_name: r.reporter.class_name }
         : null,
@@ -71,27 +74,27 @@ async function loadReport() {
 }
 
 async function loadComments() {
-  isLoadingComments.value = true
+  isLoadingComments.value = true;
   try {
-    const data = await reportService.getComments(route.params.id)
+    const data = await reportService.getComments(route.params.id);
     report.value.comments = (data.data ?? data).map((c) => ({
       id: c.id,
       text: c.comment,
-      authorName: c.author?.name ?? 'Anonim',
-      isCounselor: c.author?.role === 'counselor',
+      authorName: c.author?.name ?? "Anonim",
+      isCounselor: c.author?.role === "counselor",
       isMine: c.is_mine,
       createdAt: formatDate(c.created_at),
-    }))
+    }));
   } catch {
-    toast.error('Gagal memuat tanggapan.')
+    toast.error("Gagal memuat tanggapan.");
   } finally {
-    isLoadingComments.value = false
+    isLoadingComments.value = false;
   }
 }
 
 onMounted(() => {
-  loadReport()
-})
+  loadReport();
+});
 
 const getStatusBadge = (status) => {
   const map = {
@@ -149,36 +152,39 @@ const formatDate = (dateString) => {
 };
 
 const handleAddComment = async () => {
-  if (!newComment.value.trim() || isSubmittingComment.value) return
+  if (!newComment.value.trim() || isSubmittingComment.value) return;
 
-  isSubmittingComment.value = true
+  isSubmittingComment.value = true;
   try {
-    const data = await reportService.addComment(route.params.id, newComment.value.trim())
-    const c = data.comment
+    const data = await reportService.addComment(
+      route.params.id,
+      newComment.value.trim(),
+    );
+    const c = data.comment;
     report.value.comments.push({
       id: c.id,
       text: c.comment,
-      authorName: c.author?.name ?? 'Anda',
-      isCounselor: c.author?.role === 'counselor',
+      authorName: c.author?.name ?? "Anda",
+      isCounselor: c.author?.role === "counselor",
       isMine: true,
       createdAt: formatDate(c.created_at),
-    })
-    newComment.value = ''
-    toast.success('Tanggapan berhasil dikirim!')
+    });
+    newComment.value = "";
+    toast.success("Tanggapan berhasil dikirim!");
   } catch (error) {
-    toast.error(error?.response?.data?.message || 'Gagal mengirim tanggapan.')
+    toast.error(error?.response?.data?.message || "Gagal mengirim tanggapan.");
   } finally {
-    isSubmittingComment.value = false
+    isSubmittingComment.value = false;
   }
-}
+};
 
 const initialsShort = (name) => {
-  if (!name || typeof name !== 'string') return '?'
-  const parts = name.trim().split(/\s+/)
+  if (!name || typeof name !== "string") return "?";
+  const parts = name.trim().split(/\s+/);
   return parts.length > 1
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-    : name.slice(0, 2).toUpperCase()
-}
+    : name.slice(0, 2).toUpperCase();
+};
 
 const onCommentKeydown = (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -199,6 +205,20 @@ const initialsOf = (name) => {
 const hasImage = computed(
   () => !!report.value?.image_url && !imageFailed.value,
 );
+const previewImage = ref(null);
+const openPreview = (img) => {
+  previewImage.value = img;
+};
+const closePreview = () => {
+  previewImage.value = null;
+};
+watch(previewImage, (v) => {
+  document.body.style.overflow = v ? "hidden" : "";
+});
+
+onBeforeUnmount(() => {
+  document.body.style.overflow = "";
+});
 const isBullying = computed(() => report.value?.category === "bullying");
 const privacyNote = computed(() =>
   isBullying.value
@@ -231,6 +251,29 @@ const STEP_META = {
     desc: "Laporan telah ditindaklanjuti sampai tuntas",
   },
 };
+
+const beforePhotos = computed(
+  () =>
+    report.value?.attachments.filter(
+      (a) => a.phase !== "after" && a.file_type?.startsWith("image/"),
+    ) ?? [],
+);
+const afterPhotos = computed(
+  () =>
+    report.value?.attachments.filter(
+      (a) => a.phase === "after" && a.file_type?.startsWith("image/"),
+    ) ?? [],
+);
+const nonImageAttachments = computed(
+  () =>
+    report.value?.attachments.filter(
+      (a) => !a.file_type?.startsWith("image/"),
+    ) ?? [],
+);
+
+const hasAnyAttachment = computed(
+  () => (report.value?.attachments.length ?? 0) > 0,
+);
 
 const timeline = computed(() => {
   if (!report.value) return [];
@@ -503,8 +546,9 @@ const currentYear = new Date().getFullYear();
                 </p>
               </div>
 
+              <!-- Foto Awal / Bukti Laporan -->
               <div
-                v-if="hasImage"
+                v-if="beforePhotos.length"
                 class="space-y-3 border-t border-slate-800/70 pt-4"
               >
                 <div class="flex items-center gap-2">
@@ -515,101 +559,219 @@ const currentYear = new Date().getFullYear();
                     Lampiran Bukti Foto
                   </p>
                 </div>
-                <figure
-                  class="group relative max-w-lg overflow-hidden rounded-lg border border-slate-800 bg-slate-950"
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <figure
+                    v-for="img in beforePhotos"
+                    :key="img.id"
+                    class="group relative cursor-pointer overflow-hidden rounded-lg border border-slate-800 bg-slate-950"
+                    @click="openPreview(img)"
+                  >
+                    <img
+                      :src="img.url"
+                      alt="Lampiran laporan"
+                      loading="lazy"
+                      class="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] sm:h-36"
+                    />
+                    <span
+                      class="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-slate-950/50 text-[11px] font-semibold text-white opacity-0 backdrop-blur-[2px] transition-opacity duration-200 group-hover:opacity-100"
+                    >
+                      <ZoomIn class="h-4 w-4" />
+                      Perbesar
+                    </span>
+                  </figure>
+                </div>
+              </div>
+
+              <!-- Foto Hasil Perbaikan (hanya untuk laporan fasilitas yang sudah ditangani) -->
+              <div
+                v-if="afterPhotos.length"
+                class="space-y-3 border-t border-slate-800/70 pt-4"
+              >
+                <div class="flex items-center gap-2">
+                  <Camera class="h-3.5 w-3.5 text-emerald-500" />
+                  <p
+                    class="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400"
+                  >
+                    Foto Hasil Perbaikan
+                  </p>
+                </div>
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <figure
+                    v-for="img in afterPhotos"
+                    :key="img.id"
+                    class="group relative cursor-pointer overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950"
+                    @click="openPreview(img)"
+                  >
+                    <img
+                      :src="img.url"
+                      alt="Foto hasil perbaikan"
+                      loading="lazy"
+                      class="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] sm:h-36"
+                    />
+                    <span
+                      class="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-slate-950/50 text-[11px] font-semibold text-white opacity-0 backdrop-blur-[2px] transition-opacity duration-200 group-hover:opacity-100"
+                    >
+                      <ZoomIn class="h-4 w-4" />
+                      Perbesar
+                    </span>
+                  </figure>
+                </div>
+                <p
+                  class="flex items-start gap-1.5 text-[10px] leading-relaxed text-emerald-400/80"
                 >
-                  <img
-                    :src="report.image_url"
-                    alt="Bukti laporan"
-                    loading="lazy"
-                    class="h-auto max-h-80 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    @error="imageFailed = true"
-                  />
-                </figure>
+                  <ShieldCheck class="mt-px h-3 w-3 shrink-0" />
+                  Petugas telah mendokumentasikan hasil penanganan laporan ini.
+                </p>
+              </div>
+
+              <!-- Lampiran non-gambar (PDF) -->
+              <div
+                v-if="nonImageAttachments.length"
+                class="space-y-3 border-t border-slate-800/70 pt-4"
+              >
+                <div class="flex items-center gap-2">
+                  <FileText class="h-3.5 w-3.5 text-slate-600" />
+                  <p
+                    class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500"
+                  >
+                    Berkas Lampiran
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <a
+                    v-for="att in nonImageAttachments"
+                    :key="att.id"
+                    :href="att.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-300 transition-colors duration-150 hover:border-slate-700 hover:text-white"
+                  >
+                    <FileText class="h-3.5 w-3.5" />
+                    Berkas PDF
+                  </a>
+                </div>
               </div>
             </div>
           </article>
 
           <section
-  class="fade-up overflow-hidden rounded-xl border border-slate-800 bg-slate-900"
-  style="animation-delay: 90ms"
->
-  <div class="flex items-center justify-between gap-3 border-b border-slate-800/70 px-5 py-4 sm:px-6">
-    <div class="flex items-center gap-2.5">
-      <MessageSquare class="h-4 w-4 text-emerald-400" />
-      <h2 class="text-sm font-bold tracking-tight text-slate-100">Tanggapan &amp; Diskusi</h2>
-    </div>
-    <span class="whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">
-      {{ report.comments?.length || 0 }} Pesan
-    </span>
-  </div>
-
-  <div class="max-h-96 space-y-3 overflow-y-auto px-5 py-5 sm:px-6">
-    <div v-if="isLoadingComments" class="space-y-3">
-      <div v-for="i in 3" :key="i" class="h-14 rounded-lg bg-slate-800/50 animate-pulse"></div>
-    </div>
-
-    <div v-else-if="!report.comments || report.comments.length === 0" class="flex flex-col items-center py-8 text-center">
-      <div class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400">
-        <MessageSquare class="h-5 w-5" />
-      </div>
-      <p class="mt-3 text-sm font-semibold text-slate-200">Belum ada tanggapan</p>
-      <p class="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
-        Pihak sekolah dan Anda dapat berdiskusi langsung pada laporan ini.
-      </p>
-    </div>
-
-    <div
-      v-for="msg in report.comments"
-      :key="msg.id"
-      class="flex gap-2.5"
-      :class="msg.isMine ? 'flex-row-reverse' : ''"
-    >
-      <div
-        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-        :class="msg.isCounselor ? 'bg-emerald-500 text-slate-950' : 'border border-slate-600 bg-slate-700 text-slate-200'"
-      >
-        {{ initialsShort(msg.authorName) }}
-      </div>
-
-      <div
-        class="max-w-[75%] rounded-lg px-3.5 py-2.5"
-        :class="msg.isMine ? 'bg-emerald-500/15 border border-emerald-500/25' : 'bg-slate-800/60 border border-slate-700'"
-      >
-        <p class="flex items-center gap-1.5 text-[10px] font-semibold" :class="msg.isMine ? 'text-emerald-400' : 'text-slate-300'">
-          {{ msg.authorName }}
-          <span
-            v-if="msg.isCounselor"
-            class="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-px text-[9px] font-semibold text-emerald-400"
+            class="fade-up overflow-hidden rounded-xl border border-slate-800 bg-slate-900"
+            style="animation-delay: 90ms"
           >
-            <Check class="h-2.5 w-2.5" />
-            Petugas
-          </span>
-        </p>
-        <p class="mt-1 text-xs leading-relaxed text-slate-200 whitespace-pre-line">{{ msg.text }}</p>
-        <p class="mt-1 text-[9px] text-slate-500">{{ msg.createdAt }}</p>
-      </div>
-    </div>
-  </div>
+            <div
+              class="flex items-center justify-between gap-3 border-b border-slate-800/70 px-5 py-4 sm:px-6"
+            >
+              <div class="flex items-center gap-2.5">
+                <MessageSquare class="h-4 w-4 text-emerald-400" />
+                <h2 class="text-sm font-bold tracking-tight text-slate-100">
+                  Tanggapan &amp; Diskusi
+                </h2>
+              </div>
+              <span
+                class="whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400"
+              >
+                {{ report.comments?.length || 0 }} Pesan
+              </span>
+            </div>
 
-  <form @submit.prevent="handleAddComment" class="flex items-center gap-2.5 border-t border-slate-800/70 bg-slate-950/30 p-4 sm:px-6">
-    <input
-      v-model="newComment"
-      type="text"
-      placeholder="Tulis pesan atau tanggapan terkait laporan ini..."
-      @keydown="onCommentKeydown"
-      class="flex-1 rounded-lg border border-slate-800 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
-    />
-    <button
-      type="submit"
-      :disabled="isSubmittingComment || !newComment.trim()"
-      class="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-    >
-      <Send v-if="!isSubmittingComment" class="h-4 w-4" />
-      <Loader2 v-else class="h-4 w-4 animate-spin" />
-    </button>
-  </form>
-</section>
+            <div class="max-h-96 space-y-3 overflow-y-auto px-5 py-5 sm:px-6">
+              <div v-if="isLoadingComments" class="space-y-3">
+                <div
+                  v-for="i in 3"
+                  :key="i"
+                  class="h-14 rounded-lg bg-slate-800/50 animate-pulse"
+                ></div>
+              </div>
+
+              <div
+                v-else-if="!report.comments || report.comments.length === 0"
+                class="flex flex-col items-center py-8 text-center"
+              >
+                <div
+                  class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-400"
+                >
+                  <MessageSquare class="h-5 w-5" />
+                </div>
+                <p class="mt-3 text-sm font-semibold text-slate-200">
+                  Belum ada tanggapan
+                </p>
+                <p class="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
+                  Pihak sekolah dan Anda dapat berdiskusi langsung pada laporan
+                  ini.
+                </p>
+              </div>
+
+              <div
+                v-for="msg in report.comments"
+                :key="msg.id"
+                class="flex gap-2.5"
+                :class="msg.isMine ? 'flex-row-reverse' : ''"
+              >
+                <div
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+                  :class="
+                    msg.isCounselor
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'border border-slate-600 bg-slate-700 text-slate-200'
+                  "
+                >
+                  {{ initialsShort(msg.authorName) }}
+                </div>
+
+                <div
+                  class="max-w-[75%] rounded-lg px-3.5 py-2.5"
+                  :class="
+                    msg.isMine
+                      ? 'bg-emerald-500/15 border border-emerald-500/25'
+                      : 'bg-slate-800/60 border border-slate-700'
+                  "
+                >
+                  <p
+                    class="flex items-center gap-1.5 text-[10px] font-semibold"
+                    :class="msg.isMine ? 'text-emerald-400' : 'text-slate-300'"
+                  >
+                    {{ msg.authorName }}
+                    <span
+                      v-if="msg.isCounselor"
+                      class="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-px text-[9px] font-semibold text-emerald-400"
+                    >
+                      <Check class="h-2.5 w-2.5" />
+                      Petugas
+                    </span>
+                  </p>
+                  <p
+                    class="mt-1 text-xs leading-relaxed text-slate-200 whitespace-pre-line"
+                  >
+                    {{ msg.text }}
+                  </p>
+                  <p class="mt-1 text-[9px] text-slate-500">
+                    {{ msg.createdAt }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form
+              @submit.prevent="handleAddComment"
+              class="flex items-center gap-2.5 border-t border-slate-800/70 bg-slate-950/30 p-4 sm:px-6"
+            >
+              <input
+                v-model="newComment"
+                type="text"
+                placeholder="Tulis pesan atau tanggapan terkait laporan ini..."
+                @keydown="onCommentKeydown"
+                class="flex-1 rounded-lg border border-slate-800 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+              />
+              <button
+                type="submit"
+                :disabled="isSubmittingComment || !newComment.trim()"
+                class="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              >
+                <Send v-if="!isSubmittingComment" class="h-4 w-4" />
+                <Loader2 v-else class="h-4 w-4 animate-spin" />
+              </button>
+            </form>
+          </section>
         </div>
 
         <aside class="space-y-6 lg:sticky lg:top-20">
@@ -800,6 +962,41 @@ const currentYear = new Date().getFullYear();
       </div>
     </main>
 
+    <div
+      v-if="previewImage"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pratinjau lampiran"
+    >
+      <div
+        class="backdrop-in absolute inset-0 bg-slate-950/90 backdrop-blur-md"
+        aria-hidden="true"
+        @click="closePreview"
+      ></div>
+
+      <div
+        class="modal-panel relative w-full max-w-4xl overflow-hidden rounded-xl border border-slate-800 bg-slate-900 p-2 shadow-2xl shadow-black/50"
+      >
+        <button
+          type="button"
+          @click="closePreview"
+          aria-label="Tutup"
+          class="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-950/80 text-slate-400 backdrop-blur-sm transition-colors duration-200 hover:bg-slate-800 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+        >
+          <X class="h-4 w-4" />
+        </button>
+        <img
+          :src="previewImage.url"
+          alt="Lampiran diperbesar"
+          class="max-h-[80vh] w-full rounded-lg object-contain"
+        />
+        <p class="px-3 pb-1 pt-2 text-center text-[11px] text-slate-500">
+          {{ report.report_code }} · Lampiran laporan
+        </p>
+      </div>
+    </div>
+
     <footer class="border-t border-slate-800/70">
       <div
         class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-5 sm:flex-row sm:px-6 lg:px-8"
@@ -854,6 +1051,31 @@ const currentYear = new Date().getFullYear();
   .comment-enter {
     animation: none;
     opacity: 1;
+  }
+}
+
+.backdrop-in {
+  animation: backdrop-in 0.25s ease both;
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.modal-panel {
+  animation: modal-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 </style>

@@ -41,7 +41,8 @@ async function loadAspirations() {
       content: r.description_excerpt,
       category: "Aspirasi",
       author: r.is_anonymous ? "Siswa Anonim" : (r.reporter?.name ?? "—"),
-      class: r.is_anonymous ? "-" : "—", // class_name tidak di-load di ReportResource list, lihat catatan di bawah
+      authorAvatar: r.is_anonymous ? null : (r.reporter?.avatar ?? null),
+      class: r.is_anonymous ? "—" : (r.reporter?.class_name ?? "—"),
       isAnonymous: r.is_anonymous,
       createdAt: formatRelative(r.created_at),
       likesCount: r.type_meta?.upvotes_count ?? 0,
@@ -524,10 +525,10 @@ const currentYear = new Date().getFullYear();
             >
               <div class="flex min-w-0 items-center gap-2.5">
                 <div
-                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-purple-500/30 bg-purple-500/10 text-[10px] font-bold text-purple-400"
+                  class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-[11px] font-bold text-slate-300"
                 >
                   <Lock v-if="item.isAnonymous" class="h-3.5 w-3.5" />
-                  <template v-else>{{ initialsOf(item.author) }}</template>
+                  <span v-else>{{ initialsOf(item.author) }}</span>
                 </div>
                 <div class="min-w-0">
                   <p class="truncate text-xs font-semibold text-slate-200">

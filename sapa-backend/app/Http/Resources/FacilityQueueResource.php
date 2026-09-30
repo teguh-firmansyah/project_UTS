@@ -39,6 +39,8 @@ class FacilityQueueResource extends JsonResource
 
             'attachments_count' => $this->whenCounted('attachments'),
 
+            'last_note' => $this->whenLoaded('statusLogs', fn() => $this->statusLogs->first()?->note),
+
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

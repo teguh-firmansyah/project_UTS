@@ -26,6 +26,8 @@ class ReportResource extends JsonResource
                 fn() => $this->reporter ? [
                     'id' => $this->reporter->id,
                     'name' => $this->reporter->name,
+                    'avatar' => $this->reporter->avatar ? asset('storage/' . $this->reporter->avatar) : null,
+                    'class_name' => $this->reporter->schoolClass?->name,
                 ] : null
             ),
 

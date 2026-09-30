@@ -12,6 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -24,10 +25,10 @@ class User extends Authenticatable
         'email',
         'password',
         'identity_number',
-        'class_name',
+        'class_id',
         'phone',
-        'room',   // BARU
-        'bio',    // BARU
+        'room',
+        'bio',
         'avatar',
         'is_active',
     ];
@@ -71,6 +72,16 @@ class User extends Authenticatable
     public function votes(): HasMany
     {
         return $this->hasMany(AspirationVote::class);
+    }
+
+    public function uploads(): HasMany
+    {
+        return $this->hasMany(ReportAttachment::class, 'uploaded_by');
+    }
+
+    public function schoolClass(): BelongsTo
+    {
+        return $this->belongsTo(SchoolClass::class, 'class_id');
     }
 
     // Helper role check, dipakai di Policy

@@ -22,7 +22,7 @@ class BullyingQueueResource extends JsonResource
                 ! $this->is_anonymous && $this->relationLoaded('reporter') && $this->reporter,
                 fn() => [
                     'name' => $this->reporter->name,
-                    'class_name' => $this->reporter->class_name,
+                    'class_name' => $this->reporter->schoolClass?->name,
                 ]
             ),
 

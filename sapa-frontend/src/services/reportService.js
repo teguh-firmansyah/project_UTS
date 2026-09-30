@@ -89,31 +89,94 @@ export default {
 
   // Aspiration
   async getAspirations(params = {}) {
-    const { data } = await api.get('/api/aspirations', { params })
-    return data
+    const { data } = await api.get("/api/aspirations", { params });
+    return data;
   },
 
   async toggleUpvote(reportId) {
-    const { data } = await api.post(`/api/aspirations/${reportId}/upvote`)
-    return data
+    const { data } = await api.post(`/api/aspirations/${reportId}/upvote`);
+    return data;
   },
 
   // Admin
   async getAdminAnalytics() {
-    const { data } = await api.get('/api/admin/dashboard/analytics')
-    return data
+    const { data } = await api.get("/api/admin/dashboard/analytics");
+    return data;
   },
 
   async getAdminReports(params = {}) {
-    const { data } = await api.get('/api/admin/reports', { params })
-    return data
+    const { data } = await api.get("/api/admin/reports", { params });
+    return data;
   },
 
   async exportAdminReports(params = {}) {
-    const response = await api.get('/api/admin/reports/export', {
+    const response = await api.get("/api/admin/reports/export", {
       params,
-      responseType: 'blob',
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  async getAdminAspirations(params = {}) {
+    const { data } = await api.get("/api/admin/aspirations", { params });
+    return data;
+  },
+
+  async deleteReport(id) {
+    const { data } = await api.delete(`/api/reports/${id}`);
+    return data;
+  },
+
+  async getAssignableUsers(type) {
+    const { data } = await api.get("/api/admin/assignable-users", {
+      params: { type },
+    });
+    return data;
+  },
+
+  async assignReport(reportId, assignedTo) {
+    const { data } = await api.patch(`/api/reports/${reportId}/assign`, {
+      assigned_to: assignedTo,
+    });
+    return data;
+  },
+
+  // Facility
+  async getFacilityQueue(params = {}) {
+    const { data } = await api.get("/api/staff/facility-queue", { params });
+    return data;
+  },
+
+  async getFacilityStats() {
+    const { data } = await api.get("/api/staff/facility-stats");
+    return data;
+  },
+
+  async updateReportStatus(reportId, payload) {
+    const { data } = await api.patch(
+      `/api/reports/${reportId}/status`,
+      payload,
+    );
+    return data;
+  },
+
+  async uploadAttachments(reportId, files) {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("attachments[]", f));
+    const { data } = await api.post(
+      `/api/reports/${reportId}/attachments`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
+    return data;
+  },
+
+  async getFacilityHistory() {
+    const { data } = await api.get('/api/staff/facility-queue', {
+      params: { 'status[]': ['resolved', 'rejected'] },
     })
-    return response.data
+    return data
   },
 };

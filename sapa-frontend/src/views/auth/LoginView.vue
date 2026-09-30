@@ -23,7 +23,7 @@ const authStore = useAuthStore()
 const showPassword = ref(false)
 
 const schema = yup.object({
-  email: yup.string().required('Email wajib diisi').email('Format email tidak valid'),
+  login: yup.string().required('Email atau NIS wajib diisi'),
   password: yup.string().required('Password wajib diisi'),
 })
 
@@ -31,7 +31,7 @@ const { handleSubmit, defineField, errors } = useForm({
   validationSchema: schema,
 })
 
-const [email, emailAttrs] = defineField('email')
+const [login, loginAttrs] = defineField('login')
 const [password, passwordAttrs] = defineField('password')
 
 const onSubmit = handleSubmit(async (values) => {
@@ -41,7 +41,7 @@ const onSubmit = handleSubmit(async (values) => {
     const target = route.query.redirect || authStore.defaultRoute
     router.push(target)
   } catch {
-    toast.error(authStore.error || 'Login gagal, periksa email dan password.')
+    toast.error(authStore.error || 'Login gagal, periksa email/NIS dan password.')
   }
 })
 
@@ -145,19 +145,18 @@ const logoFailed = ref(false)
                     <Mail class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                       id="login-email"
-                      v-model="email"
-                      v-bind="emailAttrs"
-                      type="email"
-                      autocomplete="email"
-                      placeholder="nama@sapa.sch.id"
-                      :aria-invalid="!!errors.email || undefined"
+                      v-model="login"
+                      v-bind="loginAttrs"
+                      type="text"
+                      placeholder="nama@sapa.sch.id / 2026....."
+                      :aria-invalid="!!errors.login || undefined"
                       class="w-full rounded-lg border bg-slate-950/60 py-2.5 pl-10 pr-3.5 text-sm text-slate-100 placeholder-slate-500 transition-colors duration-200 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
-                      :class="errors.email ? 'border-red-400/60' : 'border-slate-800'"
+                      :class="errors.login ? 'border-red-400/60' : 'border-slate-800'"
                     />
                   </div>
-                  <p v-if="errors.email" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
+                  <p v-if="errors.login" class="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-red-400">
                     <AlertTriangle class="h-3.5 w-3.5 shrink-0" />
-                    {{ errors.email }}
+                    {{ errors.login }}
                   </p>
                 </div>
 
