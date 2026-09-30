@@ -10,18 +10,31 @@ class ReportAttachment extends Model
 {
     use HasFactory;
 
-    public $timestamps = false; // hanya created_at
+    public $timestamps = false;
+
+    protected $appends = ['url'];
 
     protected $fillable = [
         'report_id',
+        'phase',
+        'uploaded_by',
         'file_path',
         'file_type',
         'file_size',
     ];
 
+    protected $casts = [
+        'created_at' => 'datetime',
+    ];
+
     public function report(): BelongsTo
     {
         return $this->belongsTo(Report::class);
+    }
+
+    public function uploader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 
     // Accessor untuk full URL file

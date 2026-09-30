@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use App\Exports\StudentsExport;
+use App\Exports\StudentImportTemplateExport;
+use App\Imports\StudentsImport;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\StaffExport;
 
 class UserManagementController extends Controller
 {
@@ -17,7 +22,7 @@ class UserManagementController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query()->with('roles:name');
+        $query = User::query()->with(['roles:name', 'schoolClass']);
 
         if ($request->filled('role')) {
             $query->role($request->role);
@@ -59,7 +64,7 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:150', 'unique:users,email'],
             'password' => ['required', 'string', Password::min(8)],
             'identity_number' => ['required', 'string', 'max:30', 'unique:users,identity_number'],
-            'class_name' => ['nullable', 'string', 'max:50'],
+            'class_id' => ['nullable', 'exists:classes,id'],
             'phone' => ['nullable', 'string', 'max:20'],
             'role' => ['required', Rule::in(['student', 'staff', 'counselor', 'admin'])],
         ]);
@@ -69,7 +74,7 @@ class UserManagementController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'identity_number' => $validated['identity_number'],
-            'class_name' => $validated['class_name'] ?? null,
+            'class_id' => $validated['class_id'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'is_active' => true,
             'email_verified_at' => now(),
@@ -79,7 +84,7 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => 'Akun berhasil dibuat.',
-            'user' => new UserResource($user->load('roles:name')),
+            'user' => new UserResource($user->load(['roles:name', 'schoolClass'])),
         ], 201);
     }
 
@@ -92,7 +97,7 @@ class UserManagementController extends Controller
             'name' => ['sometimes', 'string', 'max:150'],
             'email' => ['sometimes', 'email', 'max:150', Rule::unique('users')->ignore($user->id)],
             'identity_number' => ['sometimes', 'string', 'max:30', Rule::unique('users')->ignore($user->id)],
-            'class_name' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'class_id' => ['sometimes', 'nullable', 'exists:classes,id'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
         ]);
 
@@ -100,7 +105,7 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => 'Data user berhasil diperbarui.',
-            'user' => new UserResource($user->fresh()->load('roles:name')),
+            'user' => new UserResource($user->fresh()->load(['roles:name', 'schoolClass'])),
         ]);
     }
 
@@ -177,5 +182,101 @@ class UserManagementController extends Controller
         return response()->json([
             'message' => 'User berhasil dihapus.',
         ]);
+    }
+
+    public function exportStudents(Request $request)
+    {
+        $validated = $request->validate([
+            'class_id' => ['nullable', 'exists:classes,id'],
+            'academic_year' => ['nullable', 'regex:/^\d{4}\/\d{4}$/'],
+            'grade' => ['nullable', 'in:X,XI,XII'],
+        ]);
+
+        $filenameParts = ['data-siswa'];
+        if (! empty($validated['grade'])) $filenameParts[] = $validated['grade'];
+        if (! empty($validated['academic_year'])) $filenameParts[] = str_replace('/', '-', $validated['academic_year']);
+        $filenameParts[] = now()->format('Y-m-d');
+
+        $filename = implode('_', $filenameParts) . '.xlsx';
+
+        return Excel::download(
+            new StudentsExport(
+                $validated['class_id'] ?? null,
+                $validated['academic_year'] ?? null,
+                $validated['grade'] ?? null,
+            ),
+            $filename
+        );
+    }
+
+    public function downloadStudentTemplate()
+    {
+        return Excel::download(new StudentImportTemplateExport(), 'template-import-siswa.xlsx');
+    }
+
+    public function importStudents(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:2048'],
+        ]);
+
+        $import = new StudentsImport();
+
+        try {
+            Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Terjadi kesalahan saat memproses file: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => "Berhasil mengimpor {$import->successCount} siswa." . (count($import->errors) > 0 ? ' Beberapa baris dilewati.' : ''),
+            'success_count' => $import->successCount,
+            'errors' => $import->errors,
+        ]);
+    }
+
+    public function stats()
+    {
+        $students = User::role('student')->count();
+        $staff = User::role('staff')->count();
+        $counselors = User::role('counselor')->count();
+        $admins = User::role('admin')->count();
+
+        return response()->json([
+            'total' => User::count(),
+            'active' => User::where('is_active', true)->count(),
+            'by_role' => [
+                'student' => $students,
+                'staff' => $staff,
+                'counselor' => $counselors,
+                'admin' => $admins,
+                'management' => $staff + $counselors + $admins,
+            ],
+        ]);
+    }
+
+    public function exportStaff(Request $request)
+    {
+        $validated = $request->validate([
+            'role' => ['required', 'in:staff,counselor,all'],
+        ]);
+
+        $roles = match ($validated['role']) {
+            'staff' => ['staff'],
+            'counselor' => ['counselor'],
+            'all' => ['staff', 'counselor'],
+        };
+
+        $roleLabel = match ($validated['role']) {
+            'staff' => 'sarpras',
+            'counselor' => 'bk',
+            'all' => 'petugas',
+        };
+
+        $filename = "data-{$roleLabel}-" . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(new StaffExport($roles), $filename);
     }
 }

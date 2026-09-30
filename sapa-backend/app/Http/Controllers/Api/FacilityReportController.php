@@ -32,31 +32,24 @@ class FacilityReportController extends Controller
 
         $query = Report::query()
             ->ofType('facility')
-            ->with(['reporter:id,name', 'facilityDetail', 'assignee:id,name'])
+            ->where('assigned_to', $request->user()->id)
+            ->with(['reporter:id,name', 'facilityDetail', 'assignee:id,name', 'statusLogs' => function ($q) {
+                $q->latest()->limit(1);
+            }])
             ->withCount('attachments');
 
-        // Filter status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         } else {
             $query->whereIn('status', ['pending', 'reviewing', 'in_progress']);
         }
 
-        // Filter kategori kerusakan (electricity, furniture, sanitation, building, other)
         if ($request->filled('category')) {
-            $query->whereHas('facilityDetail', function ($q) use ($request) {
-                $q->where('category', $request->category);
-            });
+            $query->whereHas('facilityDetail', fn($q) => $q->where('category', $request->category));
         }
-
-        // Filter tingkat kerusakan (minor, moderate, severe)
         if ($request->filled('damage_level')) {
-            $query->whereHas('facilityDetail', function ($q) use ($request) {
-                $q->where('damage_level', $request->damage_level);
-            });
+            $query->whereHas('facilityDetail', fn($q) => $q->where('damage_level', $request->damage_level));
         }
-
-        // Filter rentang tanggal
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
@@ -79,12 +72,13 @@ class FacilityReportController extends Controller
         $this->authorize('viewAny', Report::class);
 
         $stats = Report::ofType('facility')
+            ->where('assigned_to', $request->user()->id)
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        // Tambahan khusus fasilitas: breakdown per kategori kerusakan
         $byCategory = Report::ofType('facility')
+            ->where('assigned_to', $request->user()->id)
             ->join('facility_report_details', 'reports.id', '=', 'facility_report_details.report_id')
             ->selectRaw('facility_report_details.category, count(*) as total')
             ->groupBy('facility_report_details.category')
@@ -139,7 +133,7 @@ class FacilityReportController extends Controller
             'note' => 'Laporan fasilitas diajukan.',
         ]);
 
-        $notificationService->notifyNewReport($report);
+        $notificationService->notifyAdminsNewReport($report);
 
         return response()->json([
             'message' => 'Laporan fasilitas berhasil dikirim.',

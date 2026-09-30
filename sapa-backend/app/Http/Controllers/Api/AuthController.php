@@ -28,32 +28,38 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'identity_number' => $validated['identity_number'],
-            'class_name' => $validated['class_name'],
+            'class_id' => $validated['class_id'],
             'phone' => $validated['phone'] ?? null,
             'is_active' => true,
         ]);
 
-        $user->assignRole('student'); // hardcoded, tidak boleh dari input user
+        $user->assignRole('student');
 
         Auth::login($user);
         $request->session()->regenerate();
 
         return response()->json([
             'message' => 'Registrasi berhasil.',
-            'user' => new UserResource($user),
+            'user' => new UserResource($user->load('schoolClass')),
         ], 201);
     }
 
-    /**
-     * Login — session/cookie based (Sanctum SPA), BUKAN token Bearer manual.
-     */
     public function login(LoginRequest $request)
     {
-        $credentials = $request->validated();
+        $validated = $request->validated();
+
+        $loginField = filter_var($validated['login'], FILTER_VALIDATE_EMAIL)
+            ? 'email'
+            : 'identity_number';
+
+        $credentials = [
+            $loginField => $validated['login'],
+            'password' => $validated['password'],
+        ];
 
         if (! Auth::attempt($credentials, remember: true)) {
             throw ValidationException::withMessages([
-                'email' => ['Email atau password salah.'],
+                'login' => ['Email/NIS atau password salah.'],
             ]);
         }
 
@@ -62,9 +68,11 @@ class AuthController extends Controller
         if (! $user->is_active) {
             Auth::logout();
             throw ValidationException::withMessages([
-                'email' => ['Akun kamu telah dinonaktifkan. Hubungi admin.'],
+                'login' => ['Akun kamu telah dinonaktifkan. Hubungi admin.'],
             ]);
         }
+
+        $request->user()->load('schoolClass');
 
         $request->session()->regenerate();
 
@@ -95,6 +103,8 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
+        $request->user()->load('schoolClass');
+
         return response()->json([
             'user' => new UserResource($request->user()),
         ]);

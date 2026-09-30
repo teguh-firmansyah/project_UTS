@@ -39,6 +39,15 @@ class ReportCommentController extends Controller
             'is_internal' => false,
         ]);
 
+        $recipient = $request->user()->id === $report->reporter_id ? $report->assignee : $report->reporter;
+        if ($recipient) {
+            $recipient->notifications()->create([
+                'report_id' => $report->id,
+                'title' => 'Pesan Baru',
+                'message' => "Ada pesan baru pada laporan {$report->report_code}.",
+            ]);
+        }
+
         $comment->load(['user:id,name', 'report']);
 
         return response()->json([

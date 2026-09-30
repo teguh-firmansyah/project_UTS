@@ -57,13 +57,15 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($students as $data) {
+            $class = \App\Models\SchoolClass::where('name', $data['class'])->first();
+
             $student = User::firstOrCreate(
                 ['email' => $data['email']],
                 [
                     'name' => $data['name'],
                     'password' => Hash::make('password'),
                     'identity_number' => $data['nis'],
-                    'class_name' => $data['class'],
+                    'class_id' => $class?->id,
                     'is_active' => true,
                     'email_verified_at' => now(),
                 ]

@@ -27,7 +27,7 @@ class ReportDetailResource extends JsonResource
                 fn() => [
                     'id' => $this->reporter->id,
                     'name' => $this->reporter->name,
-                    'class_name' => $this->reporter->class_name ?? '-',
+                    'class_name' => $this->reporter->schoolClass?->name,
                 ]
             ),
 

@@ -21,45 +21,45 @@ class ReportPolicy
     }
 
     public function view(User $user, Report $report): bool
-{
-    // Kasus khusus: laporan bullying
-    if ($report->type === 'bullying') {
-        return $this->canAccessBullyingDetail($user, $report);
-    }
+    {
+        // Kasus khusus: laporan bullying
+        if ($report->type === 'bullying') {
+            return $this->canAccessBullyingDetail($user, $report);
+        }
 
-    // PERBAIKAN: Pemilik laporan SELALU boleh lihat laporannya sendiri (termasuk jika anonim)
-    if ($report->reporter_id === $user->id) {
-        return true;
-    }
+        // PERBAIKAN: Pemilik laporan SELALU boleh lihat laporannya sendiri (termasuk jika anonim)
+        if ($report->reporter_id === $user->id) {
+            return true;
+        }
 
-    // Aspirasi publik boleh dilihat semua siswa
-    if ($report->type === 'aspiration') {
-        return $user->hasPermissionTo('aspiration.view_public');
-    }
+        // Aspirasi publik boleh dilihat semua siswa
+        if ($report->type === 'aspiration') {
+            return $user->hasPermissionTo('aspiration.view_public');
+        }
 
-    // Fasilitas: staff/admin dengan permission view_all
-    if ($report->type === 'facility') {
-        return $user->hasPermissionTo('facility.view_all');
-    }
+        // Fasilitas: staff/admin dengan permission view_all
+        if ($report->type === 'facility') {
+            return $user->hasPermissionTo('facility.view_all');
+        }
 
-    return false;
-}
+        return false;
+    }
 
     public function canAccessBullyingDetail(User $user, Report $report): bool
-{
-    // Hanya counselor dengan permission bullying.handle
-    if ($user->hasPermissionTo('bullying.handle')) {
-        return true;
-    }
+    {
+        // Hanya counselor dengan permission bullying.handle
+        if ($user->hasPermissionTo('bullying.handle')) {
+            return true;
+        }
 
-    // PERBAIKAN: Pelapor sendiri SELALU boleh lihat status laporannya SENDIRI
-    if ($report->reporter_id === $user->id) {
-        return true;
-    }
+        // PERBAIKAN: Pelapor sendiri SELALU boleh lihat status laporannya SENDIRI
+        if ($report->reporter_id === $user->id) {
+            return true;
+        }
 
-    // Admin biasa TIDAK termasuk di sini
-    return false;
-}
+        // Admin biasa TIDAK termasuk di sini
+        return false;
+    }
 
     /**
      * Semua yang punya permission report.create boleh membuat laporan.

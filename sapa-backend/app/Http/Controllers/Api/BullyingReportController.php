@@ -56,9 +56,9 @@ class BullyingReportController extends Controller
 
         $query = Report::query()
             ->ofType('bullying')
-            ->with(['bullyingDetail.counselor:id,name', 'reporter:id,name,class_name']);
+            ->where('assigned_to', $request->user()->id)
+            ->with(['bullyingDetail.counselor:id,name', 'reporter:id,name', 'reporter.schoolClass:id,name',]);
 
-        // Dukung filter status tunggal ATAU multi (status[]=resolved&status[]=rejected)
         if ($request->filled('status')) {
             $statuses = (array) $request->status;
             $query->whereIn('status', $statuses);
@@ -73,7 +73,7 @@ class BullyingReportController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $reports = $query->latest()->paginate(50); // arsip biasanya butuh limit lebih besar
+        $reports = $query->latest()->paginate(50);
 
         return BullyingQueueResource::collection($reports);
     }
@@ -116,7 +116,7 @@ class BullyingReportController extends Controller
             'note' => 'Laporan bullying diajukan.',
         ]);
 
-        $notificationService->notifyNewReport($report);
+        $notificationService->notifyAdminsNewReport($report);
 
         return response()->json([
             'message' => 'Laporan kamu telah diterima dan akan ditangani oleh Guru BK secara rahasia.',
@@ -172,6 +172,14 @@ class BullyingReportController extends Controller
                 'changed_by' => $request->user()->id,
                 'note' => $validated['handling_notes'],
             ]);
+
+            if ($report->reporter_id) {
+                $report->reporter->notifications()->create([
+                    'report_id' => $report->id,
+                    'title' => 'Status Laporan Diperbarui',
+                    'message' => "Laporan {$report->report_code} kini berstatus: " . ucfirst(str_replace('_', ' ', $validated['status'])),
+                ]);
+            }
         });
 
         // 4. Return Response JSON beserta relasi terbarunya
@@ -189,6 +197,7 @@ class BullyingReportController extends Controller
         $this->authorize('viewAny', Report::class);
 
         $stats = Report::ofType('bullying')
+            ->where('assigned_to', $request->user()->id)
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');

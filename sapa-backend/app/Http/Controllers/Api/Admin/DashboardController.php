@@ -102,7 +102,7 @@ class DashboardController extends Controller
 
     public function allReports(Request $request)
     {
-        $query = Report::query()->with(['reporter:id,name']);
+        $query = Report::query()->with(['reporter:id,name', 'assignee:id,name']);
 
         if ($request->filled('type')) {
             $query->where('type', $request->type);
@@ -142,6 +142,7 @@ class DashboardController extends Controller
                     ? ['name' => $report->reporter->name]
                     : null,
                 'created_at' => $report->created_at->toIso8601String(),
+                'assignee' => $report->assignee ? ['name' => $report->assignee->name] : null,
             ];
         });
 
@@ -203,7 +204,7 @@ class DashboardController extends Controller
     {
         $query = Report::query()
             ->ofType('aspiration')
-            ->with(['reporter:id,name,class_name', 'aspirationDetail'])
+            ->with(['reporter:id,name,class_id', 'reporter.schoolClass:id,name', 'aspirationDetail'])
             ->withCount('comments');
 
         if ($request->filled('status')) {
@@ -224,27 +225,44 @@ class DashboardController extends Controller
             });
         }
 
-        $aspirations = $query->latest()->paginate(20);
-
-        $aspirations->getCollection()->transform(function ($report) {
-            return [
-                'id' => $report->id,
-                'report_code' => $report->report_code,
-                'title' => $report->title,
-                'description_excerpt' => str($report->description)->limit(150)->toString(),
-                'status' => $report->status,
-                'is_anonymous' => $report->is_anonymous,
-                'reporter' => ! $report->is_anonymous && $report->reporter
-                    ? ['name' => $report->reporter->name, 'class_name' => $report->reporter->class_name]
-                    : null,
-                'category' => $report->aspirationDetail?->category,
-                'upvotes_count' => $report->aspirationDetail?->upvotes_count ?? 0,
-                'is_public' => $report->aspirationDetail?->is_public ?? true,
-                'comments_count' => $report->comments_count,
-                'created_at' => $report->created_at->toIso8601String(),
-            ];
-        });
+        $aspirations = $query->latest()->paginate(20)->through(function ($report) {
+        return [
+            'id' => $report->id,
+            'report_code' => $report->report_code,
+            'title' => $report->title,
+            'description_excerpt' => str($report->description)->limit(150)->toString(),
+            'status' => $report->status,
+            'is_anonymous' => $report->is_anonymous,
+            'reporter' => ! $report->is_anonymous && $report->reporter
+                ? [
+                    'name' => $report->reporter->name, 
+                    'class_name' => $report->reporter->schoolClass?->name ?? '—'
+                  ]
+                : null,
+            'category' => $report->aspirationDetail?->category,
+            'upvotes_count' => $report->aspirationDetail?->upvotes_count ?? 0,
+            'is_public' => $report->aspirationDetail?->is_public ?? true,
+            'comments_count' => $report->comments_count,
+            'created_at' => $report->created_at->toIso8601String(),
+        ];
+    });
 
         return response()->json($aspirations);
+    }
+
+    public function assignableUsers(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'in:facility,bullying'],
+        ]);
+
+        $role = $validated['type'] === 'bullying' ? 'counselor' : 'staff';
+
+        $users = \App\Models\User::role($role)
+            ->where('is_active', true)
+            ->select('id', 'name', 'email')
+            ->get();
+
+        return response()->json($users);
     }
 }

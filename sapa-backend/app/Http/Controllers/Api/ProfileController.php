@@ -28,21 +28,30 @@ class ProfileController extends Controller
             'room' => ['sometimes', 'nullable', 'string', 'max:100'],
             'bio' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'avatar' => ['sometimes', 'nullable', 'file', 'mimes:jpg,jpeg,png', 'max:2048'],
+            'remove_avatar' => ['sometimes', 'boolean'],
         ]);
 
+        unset($validated['class_id']);
+
         if ($request->hasFile('avatar')) {
-            // Hapus avatar lama supaya storage tidak menumpuk
             if ($user->avatar) {
                 Storage::disk('public')->delete($user->avatar);
             }
             $validated['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        } elseif ($request->boolean('remove_avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $validated['avatar'] = null;
         }
+
+        unset($validated['remove_avatar']);
 
         $user->update($validated);
 
         return response()->json([
             'message' => 'Profil berhasil diperbarui.',
-            'user' => new UserResource($user->fresh()),
+            'user' => new UserResource($user->fresh()->load('schoolClass')),
         ]);
     }
 

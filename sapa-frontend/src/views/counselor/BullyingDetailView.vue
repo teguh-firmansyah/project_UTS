@@ -4,8 +4,6 @@ import { useRoute, useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import { useAuthStore } from "@/stores/auth";
 import reportService from "@/services/reportService";
-
-// Import Lucide Icons
 import {
   ArrowLeft,
   Printer,
@@ -24,7 +22,7 @@ import {
   Plus,
   X,
   ChevronDown,
-  Check
+  Check,
 } from "lucide-vue-next";
 
 const route = useRoute();
@@ -107,7 +105,7 @@ async function loadReport() {
         : "—",
       description: r.description || "Tidak ada deskripsi.",
       attachments: r.attachments ?? [],
-      status: r.status,
+      status: STATUS_MAP[r.status] ?? r.status,
       priority: r.priority || "—",
       handled_by: detail.handled_by_counselor_id ?? null,
       handling_notes: detail.handling_notes ?? "",
@@ -171,7 +169,10 @@ async function handleSendMessage() {
 
   isSendingMessage.value = true;
   try {
-    const data = await reportService.addComment(reportId, newMessage.value.trim());
+    const data = await reportService.addComment(
+      reportId,
+      newMessage.value.trim(),
+    );
     const c = data.comment;
     comments.value.push({
       id: c.id,
@@ -249,13 +250,13 @@ watch(
   () => form.value.status,
   () => {
     if (formErrors.value.status) formErrors.value.status = "";
-  }
+  },
 );
 watch(
   () => form.value.handling_notes,
   () => {
     if (formErrors.value.handling_notes) formErrors.value.handling_notes = "";
-  }
+  },
 );
 
 const notesLength = computed(() => (form.value.handling_notes || "").length);
@@ -269,7 +270,7 @@ const handleUpdateStatus = async () => {
     if (!form.value.handling_notes.trim())
       formErrors.value.handling_notes = "Catatan penanganan wajib diisi.";
     toast.error(
-      "Mohon lengkapi status dan catatan penanganan terlebih dahulu."
+      "Mohon lengkapi status dan catatan penanganan terlebih dahulu.",
     );
     return;
   }
@@ -302,12 +303,12 @@ const handleUpdateStatus = async () => {
     if (validationErrors) {
       toast.error(
         Object.values(validationErrors)[0]?.[0] ||
-          "Periksa kembali data yang diisi."
+          "Periksa kembali data yang diisi.",
       );
     } else {
       toast.error(
         error?.response?.data?.message ||
-          "Gagal memperbarui laporan. Silakan coba lagi."
+          "Gagal memperbarui laporan. Silakan coba lagi.",
       );
     }
   } finally {
@@ -326,7 +327,7 @@ async function handleRevealIdentity() {
     toast.success("Identitas pelapor berhasil dibuka.");
   } catch (error) {
     toast.error(
-      error?.response?.data?.message || "Gagal membuka identitas pelapor."
+      error?.response?.data?.message || "Gagal membuka identitas pelapor.",
     );
   } finally {
     isRevealing.value = false;
@@ -379,33 +380,33 @@ const getPriority = (priority) => {
 };
 
 const priority = computed(() =>
-  report.value ? getPriority(report.value.priority) : getPriority("Rendah")
+  report.value ? getPriority(report.value.priority) : getPriority("Rendah"),
 );
 
 const statusOptions = [
   {
-    value: "Ditinjau",
+    value: "reviewing",
     label: "Ditinjau Guru BK",
     desc: "Verifikasi bukti & keterangan awal",
     dot: "bg-blue-400",
     active: "border-blue-500/50 bg-blue-500/[0.06] text-blue-400",
   },
   {
-    value: "Diproses",
+    value: "in_progress",
     label: "Diproses / Pemanggilan",
     desc: "Penanganan aktif kasus berjalan",
     dot: "bg-emerald-400",
     active: "border-emerald-500/50 bg-emerald-500/[0.06] text-emerald-400",
   },
   {
-    value: "Selesai",
+    value: "resolved",
     label: "Selesai — Kasus Tuntas",
     desc: "Tindak lanjut selesai & terdokumentasi",
     dot: "bg-slate-300",
     active: "border-slate-500/60 bg-slate-500/10 text-slate-300",
   },
   {
-    value: "Ditolak",
+    value: "rejected",
     label: "Ditolak — Bukti Tidak Cukup",
     desc: "Di luar lingkup / tidak dapat diproses",
     dot: "bg-red-400",
@@ -426,6 +427,10 @@ const actionOptions = [
 
 const caseMeta = computed(() => {
   if (!report.value) return [];
+
+  const rawRelation =
+    report.value.reporter_relation || report.value.type_meta?.reporter_relation;
+
   return [
     {
       label: "Tanggal Kejadian",
@@ -434,7 +439,7 @@ const caseMeta = computed(() => {
     },
     {
       label: "Relasi Pelapor",
-      value: report.value.reporter_relation,
+      value: RELATION_MAP[rawRelation] || rawRelation || "—",
       icon: User,
     },
     {
@@ -488,7 +493,9 @@ const currentYear = new Date().getFullYear();
             @click="goBack"
             class="group inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-700 hover:text-slate-100 active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
           >
-            <ArrowLeft class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+            <ArrowLeft
+              class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5"
+            />
             <span class="hidden sm:inline">Kembali ke Antrian</span>
             <span class="sm:hidden">Kembali</span>
           </button>
@@ -561,7 +568,7 @@ const currentYear = new Date().getFullYear();
               class="print-card fade-up relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-xl shadow-black/25"
             >
               <span
-                class="absolute inset-x-0 top-0 z-10 h-[2px] bg-gradient-to-r from-rose-500/70 via-rose-500/20 to-transparent print:hidden"
+                class="absolute inset-x-0 top-0 z-10 h-0.5 bg-linear-to-r from-rose-500/70 via-rose-500/20 to-transparent print:hidden"
                 aria-hidden="true"
               ></span>
               <div
@@ -583,11 +590,11 @@ const currentYear = new Date().getFullYear();
                         class="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/50 px-2.5 py-0.5"
                       >
                         <span
-                          class="flex items-end gap-[3px]"
+                          class="flex items-end gap-0.75"
                           aria-hidden="true"
                         >
                           <span
-                            class="h-1.5 w-[3px] rounded-[1px]"
+                            class="h-1.5 w-0.75 rounded-[1px]"
                             :class="
                               priority.level >= 1
                                 ? priority.bar
@@ -595,7 +602,7 @@ const currentYear = new Date().getFullYear();
                             "
                           ></span>
                           <span
-                            class="h-2 w-[3px] rounded-[1px]"
+                            class="h-2 w-0.75 rounded-[1px]"
                             :class="
                               priority.level >= 2
                                 ? priority.bar
@@ -603,7 +610,7 @@ const currentYear = new Date().getFullYear();
                             "
                           ></span>
                           <span
-                            class="h-2.5 w-[3px] rounded-[1px]"
+                            class="h-2.5 w-0.75 rounded-[1px]"
                             :class="
                               priority.level >= 3
                                 ? priority.bar
@@ -647,7 +654,7 @@ const currentYear = new Date().getFullYear();
                 <div>
                   <div
                     v-if="report.is_anonymous"
-                    class="flex items-start gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-4"
+                    class="flex items-start gap-3 rounded-xl border border-rose-500/25 bg-rose-500/4 p-4"
                   >
                     <div
                       class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-rose-500/25 bg-rose-500/10 text-rose-400"
@@ -718,7 +725,7 @@ const currentYear = new Date().getFullYear();
 
                     <div
                       v-else
-                      class="mt-4 flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] px-3.5 py-3"
+                      class="mt-4 flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/4 px-3.5 py-3"
                     >
                       <p class="text-xs text-slate-400">
                         Identitas pelapor belum ditampilkan.
@@ -795,7 +802,7 @@ const currentYear = new Date().getFullYear();
                     <figure
                       v-for="att in report.attachments"
                       :key="att.id"
-                      class="group relative w-full max-w-[200px] cursor-pointer overflow-hidden rounded-lg border border-slate-800 bg-slate-950 print:cursor-default"
+                      class="group relative w-full max-w-50 cursor-pointer overflow-hidden rounded-lg border border-slate-800 bg-slate-950 print:cursor-default"
                       @click="
                         att.file_type?.startsWith('image/') &&
                         openImage(att.url)
@@ -816,7 +823,7 @@ const currentYear = new Date().getFullYear();
                       </div>
                       <span
                         v-if="att.file_type?.startsWith('image/')"
-                        class="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-slate-950/50 text-[10px] font-semibold text-white opacity-0 backdrop-blur-[2px] transition-opacity duration-200 group-hover:opacity-100 print:hidden"
+                        class="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-slate-950/50 text-[10px] font-semibold text-white opacity-0 backdrop-blur-0.5 transition-opacity duration-200 group-hover:opacity-100 print:hidden"
                       >
                         Perbesar
                       </span>
@@ -828,7 +835,8 @@ const currentYear = new Date().getFullYear();
                   class="flex items-center gap-1.5 border-t border-slate-800/70 pt-4 text-[11px] text-slate-600"
                 >
                   <Lock class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
-                  Dokumen kasus bersifat rahasia — hanya untuk petugas berwenang.
+                  Dokumen kasus bersifat rahasia — hanya untuk petugas
+                  berwenang.
                 </p>
               </div>
             </section>
@@ -869,7 +877,7 @@ const currentYear = new Date().getFullYear();
                     <span
                       class="timeline-dot flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-500 bg-emerald-500 text-slate-950"
                     >
-                      <Check class="h-3 w-3 stroke-[3]" />
+                      <Check class="h-3 w-3 stroke-3" />
                     </span>
                     <span
                       v-if="i < report.timeline.length - 1"
@@ -930,7 +938,9 @@ const currentYear = new Date().getFullYear();
               <p
                 class="flex items-center gap-1.5 border-t border-slate-800/70 bg-slate-950/40 px-5 py-3 text-[11px] text-slate-600 sm:px-6"
               >
-                <CheckCircle2 class="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
+                <CheckCircle2
+                  class="h-3.5 w-3.5 shrink-0 text-emerald-500/70"
+                />
                 Jejak audit tidak dapat diubah setelah tercatat
               </p>
             </section>
@@ -973,7 +983,8 @@ const currentYear = new Date().getFullYear();
                   v-else-if="comments.length === 0"
                   class="py-6 text-center text-xs text-slate-500"
                 >
-                  Belum ada percakapan. Kirim pesan untuk memulai komunikasi dengan pelapor.
+                  Belum ada percakapan. Kirim pesan untuk memulai komunikasi
+                  dengan pelapor.
                 </p>
 
                 <div
@@ -1003,14 +1014,20 @@ const currentYear = new Date().getFullYear();
                   >
                     <p
                       class="text-[10px] font-semibold"
-                      :class="msg.isMine ? 'text-emerald-400' : 'text-slate-300'"
+                      :class="
+                        msg.isMine ? 'text-emerald-400' : 'text-slate-300'
+                      "
                     >
                       {{ msg.authorName }}
                     </p>
-                    <p class="mt-1 text-xs leading-relaxed whitespace-pre-line text-slate-200">
+                    <p
+                      class="mt-1 text-xs leading-relaxed whitespace-pre-line text-slate-200"
+                    >
                       {{ msg.text }}
                     </p>
-                    <p class="mt-1 text-[9px] text-slate-500">{{ msg.createdAt }}</p>
+                    <p class="mt-1 text-[9px] text-slate-500">
+                      {{ msg.createdAt }}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1068,7 +1085,9 @@ const currentYear = new Date().getFullYear();
                 <div
                   class="flex items-start gap-3 rounded-lg border border-slate-700 bg-slate-950/50 px-3.5 py-3"
                 >
-                  <CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <CheckCircle2
+                    class="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
+                  />
                   <p class="text-xs leading-relaxed text-slate-400">
                     Kasus ini sudah berstatus
                     <span class="font-semibold text-slate-200">{{
@@ -1262,7 +1281,7 @@ const currentYear = new Date().getFullYear();
                   :disabled="isSubmitting"
                   class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all duration-200 hover:bg-emerald-400 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 >
-                  <Check v-if="!isSubmitting" class="h-4 w-4 stroke-[2]" />
+                  <Check v-if="!isSubmitting" class="h-4 w-4 stroke-2" />
                   <Loader2 v-else class="h-4 w-4 animate-spin" />
                   {{ isSubmitting ? "Memperbarui..." : "Simpan Tindak Lanjut" }}
                 </button>

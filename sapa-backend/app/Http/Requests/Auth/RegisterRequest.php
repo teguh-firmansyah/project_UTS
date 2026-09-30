@@ -18,7 +18,7 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'email', 'max:150', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'identity_number' => ['required', 'string', 'max:30', 'unique:users,identity_number'],
-            'class_name' => ['required', 'string', 'max:50'],
+            'class_id' => ['required', 'exists:classes,id'],
             'phone' => ['nullable', 'string', 'max:20'],
         ];
     }
@@ -30,6 +30,8 @@ class RegisterRequest extends FormRequest
             'identity_number.unique' => 'NIS/NIP sudah terdaftar.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
             'password.min' => 'Password minimal 8 karakter.',
+            'class_id.required' => 'Kelas wajib dipilih.',
+            'class_id.exists' => 'Kelas yang dipilih tidak valid.',
         ];
     }
 }

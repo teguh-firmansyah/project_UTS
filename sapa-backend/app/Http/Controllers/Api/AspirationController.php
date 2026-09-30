@@ -17,7 +17,7 @@ class AspirationController extends Controller
         $query = Report::query()
             ->ofType('aspiration')
             ->whereHas('aspirationDetail', fn($q) => $q->where('is_public', true))
-            ->with(['reporter:id,name', 'aspirationDetail'])
+            ->with(['reporter:id,name,avatar', 'reporter.schoolClass:id,name', 'aspirationDetail'])
             ->withCount('comments');
 
         // Filter "Didukung" — hanya aspirasi yang di-vote user ini
@@ -45,12 +45,11 @@ class AspirationController extends Controller
 
         $aspirations = $query->paginate(20);
 
-        // Tandai is_liked per item — cek existing votes user untuk batch ini sekaligus (hindari N+1)
         $reportIds = $aspirations->pluck('id');
         $likedIds = \App\Models\AspirationVote::where('user_id', $userId)
             ->whereIn('report_id', $reportIds)
             ->pluck('report_id')
-            ->flip(); // jadi associative untuk cek cepat
+            ->flip();
 
         $aspirations->getCollection()->transform(function ($report) use ($likedIds) {
             $resource = (new ReportResource($report))->resolve();

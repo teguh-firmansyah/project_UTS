@@ -14,11 +14,15 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'identity_number' => $this->identity_number,
-            'class_name' => $this->class_name,
+            'class' => $this->whenLoaded('schoolClass', fn() => $this->schoolClass ? [
+                'id' => $this->schoolClass->id,
+                'name' => $this->schoolClass->name,
+                'academic_year' => $this->schoolClass->academic_year,
+            ] : null),
             'phone' => $this->phone,
-            'room' => $this->room,   // BARU
-            'bio' => $this->bio,     // BARU
-            'avatar' => $this->avatar ? asset('storage/' . $this->avatar) : null, // full URL
+            'room' => $this->room,
+            'bio' => $this->bio,
+            'avatar' => $this->avatar ? asset('storage/' . $this->avatar) : null,
             'is_active' => $this->is_active,
             'roles' => $this->getRoleNames(),
             'permissions' => $this->getAllPermissions()->pluck('name'),
